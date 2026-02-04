@@ -64,7 +64,12 @@ impl Board {
         if piece.color != self.side_to_move {
             return Err("piece does not match side to move".to_string());
         }
-        let was_capture = self.squares[to_index].is_some();
+        let mut was_capture = self.squares[to_index].is_some();
+        let prev_en_passant = self.en_passant;
+        let is_en_passant_capture = piece.kind == PieceKind::Pawn
+            && prev_en_passant.is_some()
+            && prev_en_passant == Some(mv.to)
+            && !was_capture;
 
         let moved_piece = match mv.promotion {
             Some(kind) => Piece {
@@ -75,6 +80,14 @@ impl Board {
         };
 
         self.squares[from_index] = None;
+        if is_en_passant_capture {
+            let capture_index = match piece.color {
+                Color::White => to_index - 16,
+                Color::Black => to_index + 16,
+            };
+            self.squares[capture_index] = None;
+            was_capture = true;
+        }
         self.squares[to_index] = Some(moved_piece);
 
         let mut new_en_passant = None;
@@ -177,5 +190,66 @@ mod tests {
 
         let ep = board.en_passant.expect("en passant square");
         assert_eq!(square_from_algebraic("a6").unwrap(), ep);
+    }
+
+    #[test]
+    fn apply_move_handles_white_en_passant_capture() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        board
+            .apply_move(move_from_uci("e2e4").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("a7a6").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("e4e5").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("d7d5").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("e5d6").unwrap())
+            .expect("apply move");
+
+        let d5 = square_from_algebraic("d5").unwrap().index() as usize;
+        let d6 = square_from_algebraic("d6").unwrap().index() as usize;
+        assert!(board.squares[d5].is_none());
+        let pawn = board.squares[d6].expect("pawn on d6");
+        assert_eq!(pawn.kind, PieceKind::Pawn);
+        assert_eq!(pawn.color, Color::White);
+    }
+
+    #[test]
+    fn apply_move_handles_black_en_passant_capture() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        board
+            .apply_move(move_from_uci("a2a3").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("d7d5").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("a3a4").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("d5d4").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("e2e4").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("d4e3").unwrap())
+            .expect("apply move");
+
+        let e4 = square_from_algebraic("e4").unwrap().index() as usize;
+        let e3 = square_from_algebraic("e3").unwrap().index() as usize;
+        assert!(board.squares[e4].is_none());
+        let pawn = board.squares[e3].expect("pawn on e3");
+        assert_eq!(pawn.kind, PieceKind::Pawn);
+        assert_eq!(pawn.color, Color::Black);
     }
 }
