@@ -1,4 +1,5 @@
 pub mod board;
+pub mod castling;
 pub mod fen;
 pub mod types;
 
