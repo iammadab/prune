@@ -70,6 +70,13 @@ impl Board {
             && prev_en_passant.is_some()
             && prev_en_passant == Some(mv.to)
             && !was_capture;
+        let from_file = mv.from.index() & 0x0f;
+        let to_file = mv.to.index() & 0x0f;
+        let from_rank = mv.from.index() >> 4;
+        let to_rank = mv.to.index() >> 4;
+        let is_castle = piece.kind == PieceKind::King
+            && from_rank == to_rank
+            && (from_file as i8 - to_file as i8).abs() == 2;
 
         let moved_piece = match mv.promotion {
             Some(kind) => Piece {
@@ -89,6 +96,24 @@ impl Board {
             was_capture = true;
         }
         self.squares[to_index] = Some(moved_piece);
+
+        if is_castle {
+            let (rook_from_file, rook_to_file) = match to_file {
+                6 => (7, 5),
+                2 => (0, 3),
+                _ => return Err("invalid castling target".to_string()),
+            };
+            let rook_rank = from_rank;
+            let rook_from_index = (rook_rank * 16 + rook_from_file) as usize;
+            let rook_to_index = (rook_rank * 16 + rook_to_file) as usize;
+            let rook =
+                self.squares[rook_from_index].ok_or_else(|| "no rook for castling".to_string())?;
+            if rook.kind != PieceKind::Rook || rook.color != piece.color {
+                return Err("invalid rook for castling".to_string());
+            }
+            self.squares[rook_from_index] = None;
+            self.squares[rook_to_index] = Some(rook);
+        }
 
         let mut new_en_passant = None;
         if piece.kind == PieceKind::Pawn {
@@ -251,5 +276,41 @@ mod tests {
         let pawn = board.squares[e3].expect("pawn on e3");
         assert_eq!(pawn.kind, PieceKind::Pawn);
         assert_eq!(pawn.color, Color::Black);
+    }
+
+    #[test]
+    fn apply_move_handles_white_castle_kingside() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+            .expect("fen");
+
+        board
+            .apply_move(move_from_uci("e1g1").unwrap())
+            .expect("castle");
+
+        let g1 = square_from_algebraic("g1").unwrap().index() as usize;
+        let f1 = square_from_algebraic("f1").unwrap().index() as usize;
+        assert_eq!(board.squares[g1].unwrap().kind, PieceKind::King);
+        assert_eq!(board.squares[f1].unwrap().kind, PieceKind::Rook);
+        assert_eq!(board.squares[f1].unwrap().color, Color::White);
+    }
+
+    #[test]
+    fn apply_move_handles_black_castle_queenside() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1")
+            .expect("fen");
+
+        board
+            .apply_move(move_from_uci("e8c8").unwrap())
+            .expect("castle");
+
+        let c8 = square_from_algebraic("c8").unwrap().index() as usize;
+        let d8 = square_from_algebraic("d8").unwrap().index() as usize;
+        assert_eq!(board.squares[c8].unwrap().kind, PieceKind::King);
+        assert_eq!(board.squares[d8].unwrap().kind, PieceKind::Rook);
+        assert_eq!(board.squares[d8].unwrap().color, Color::Black);
     }
 }
