@@ -77,6 +77,18 @@ impl Board {
         self.squares[from_index] = None;
         self.squares[to_index] = Some(moved_piece);
 
+        let mut new_en_passant = None;
+        if piece.kind == PieceKind::Pawn {
+            let from_rank = mv.from.index() >> 4;
+            let to_rank = mv.to.index() >> 4;
+            if piece.color == Color::White && from_rank == 1 && to_rank == 3 {
+                new_en_passant = Some(Square(mv.from.index() + 16));
+            } else if piece.color == Color::Black && from_rank == 6 && to_rank == 4 {
+                new_en_passant = Some(Square(mv.from.index() - 16));
+            }
+        }
+        self.en_passant = new_en_passant;
+
         let is_pawn = piece.kind == PieceKind::Pawn;
         if is_pawn || was_capture {
             self.halfmove_clock = 0;
@@ -126,5 +138,44 @@ mod tests {
         let mv = move_from_uci("e7e5").expect("move");
         let err = board.apply_move(mv).unwrap_err();
         assert!(err.contains("side to move"));
+    }
+
+    #[test]
+    fn apply_move_sets_en_passant_on_double_push() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        let mv = move_from_uci("e2e4").expect("move");
+        board.apply_move(mv).expect("apply move");
+
+        let ep = board.en_passant.expect("en passant square");
+        assert_eq!(square_from_algebraic("e3").unwrap(), ep);
+    }
+
+    #[test]
+    fn apply_move_clears_en_passant_on_single_push() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        let mv = move_from_uci("e2e3").expect("move");
+        board.apply_move(mv).expect("apply move");
+
+        assert!(board.en_passant.is_none());
+    }
+
+    #[test]
+    fn apply_move_sets_en_passant_for_black_double_push() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        board
+            .apply_move(move_from_uci("e2e4").unwrap())
+            .expect("apply move");
+        board
+            .apply_move(move_from_uci("a7a5").unwrap())
+            .expect("apply move");
+
+        let ep = board.en_passant.expect("en passant square");
+        assert_eq!(square_from_algebraic("a6").unwrap(), ep);
     }
 }
