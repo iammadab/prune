@@ -10,30 +10,6 @@ pub struct Board {
     pub fullmove_number: u32,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::engine::fen::STARTPOS_FEN;
-    use crate::engine::types::{move_from_uci, square_from_algebraic, Color, PieceKind};
-
-    #[test]
-    fn apply_move_updates_side_and_piece() {
-        let mut board = Board::new();
-        board.set_fen(STARTPOS_FEN).expect("startpos");
-
-        let mv = move_from_uci("e2e4").expect("move");
-        board.apply_move(mv).expect("apply move");
-
-        let e2 = square_from_algebraic("e2").unwrap().index() as usize;
-        let e4 = square_from_algebraic("e4").unwrap().index() as usize;
-        assert!(board.squares[e2].is_none());
-        let piece = board.squares[e4].expect("piece on e4");
-        assert_eq!(piece.kind, PieceKind::Pawn);
-        assert_eq!(piece.color, Color::White);
-        assert_eq!(board.side_to_move, Color::Black);
-    }
-}
-
 impl Board {
     pub fn new() -> Self {
         Self {
@@ -114,5 +90,28 @@ impl Board {
         };
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::engine::types::{move_from_uci, square_from_algebraic, Color, PieceKind};
+
+    #[test]
+    fn apply_move_updates_side_and_piece() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        let mv = move_from_uci("e2e4").expect("move");
+        board.apply_move(mv).expect("apply move");
+
+        let e2 = square_from_algebraic("e2").unwrap().index() as usize;
+        let e4 = square_from_algebraic("e4").unwrap().index() as usize;
+        assert!(board.squares[e2].is_none());
+        let piece = board.squares[e4].expect("piece on e4");
+        assert_eq!(piece.kind, PieceKind::Pawn);
+        assert_eq!(piece.color, Color::White);
+        assert_eq!(board.side_to_move, Color::Black);
     }
 }
