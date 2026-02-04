@@ -1,3 +1,4 @@
+use crate::engine::castling::{revoke_all, revoke_kingside, revoke_queenside};
 use crate::engine::fen::{parse_fen, STARTPOS_FEN};
 use crate::engine::types::{move_from_uci, Color, Move, Piece, PieceKind, Square};
 
@@ -134,6 +135,16 @@ impl Board {
             self.halfmove_clock = self.halfmove_clock.saturating_add(1);
         }
 
+        update_castling_rights(
+            &mut self.castling_rights,
+            piece,
+            from_file,
+            from_rank,
+            to_file,
+            to_rank,
+            was_capture,
+        );
+
         if self.side_to_move == Color::Black {
             self.fullmove_number = self.fullmove_number.saturating_add(1);
         }
@@ -146,9 +157,44 @@ impl Board {
     }
 }
 
+fn update_castling_rights(
+    rights: &mut u8,
+    piece: Piece,
+    from_file: u8,
+    from_rank: u8,
+    to_file: u8,
+    to_rank: u8,
+    was_capture: bool,
+) {
+    if piece.kind == PieceKind::King {
+        revoke_all(rights, piece.color);
+    }
+
+    if piece.kind == PieceKind::Rook {
+        match (piece.color, from_file, from_rank) {
+            (Color::White, 0, 0) => revoke_queenside(rights, Color::White),
+            (Color::White, 7, 0) => revoke_kingside(rights, Color::White),
+            (Color::Black, 0, 7) => revoke_queenside(rights, Color::Black),
+            (Color::Black, 7, 7) => revoke_kingside(rights, Color::Black),
+            _ => {}
+        }
+    }
+
+    if was_capture {
+        match (to_file, to_rank) {
+            (0, 0) => revoke_queenside(rights, Color::White),
+            (7, 0) => revoke_kingside(rights, Color::White),
+            (0, 7) => revoke_queenside(rights, Color::Black),
+            (7, 7) => revoke_kingside(rights, Color::Black),
+            _ => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::castling::{has_kingside, has_queenside};
     use crate::engine::types::{move_from_uci, square_from_algebraic, Color, PieceKind};
 
     #[test]
@@ -312,5 +358,52 @@ mod tests {
         assert_eq!(board.squares[c8].unwrap().kind, PieceKind::King);
         assert_eq!(board.squares[d8].unwrap().kind, PieceKind::Rook);
         assert_eq!(board.squares[d8].unwrap().color, Color::Black);
+    }
+
+    #[test]
+    fn apply_move_revokes_castling_on_king_move() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+            .expect("fen");
+
+        board
+            .apply_move(move_from_uci("e1f1").unwrap())
+            .expect("move");
+
+        assert!(!has_kingside(board.castling_rights, Color::White));
+        assert!(!has_queenside(board.castling_rights, Color::White));
+        assert!(has_kingside(board.castling_rights, Color::Black));
+        assert!(has_queenside(board.castling_rights, Color::Black));
+    }
+
+    #[test]
+    fn apply_move_revokes_castling_on_rook_move() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+            .expect("fen");
+
+        board
+            .apply_move(move_from_uci("h1h2").unwrap())
+            .expect("move");
+
+        assert!(!has_kingside(board.castling_rights, Color::White));
+        assert!(has_queenside(board.castling_rights, Color::White));
+    }
+
+    #[test]
+    fn apply_move_revokes_castling_on_rook_capture() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+            .expect("fen");
+
+        board
+            .apply_move(move_from_uci("a1a8").unwrap())
+            .expect("capture");
+
+        assert!(!has_queenside(board.castling_rights, Color::Black));
+        assert!(has_kingside(board.castling_rights, Color::Black));
     }
 }
