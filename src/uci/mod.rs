@@ -21,8 +21,8 @@ pub fn run_loop(engine: &mut Engine) {
 
         match parse_line(line) {
             Command::Uci => {
-                write_line("id name chess-engine");
-                write_line("id author OpenCode");
+                write_line("id name prune");
+                write_line("id author madab");
                 write_line("uciok");
             }
             Command::IsReady => {
