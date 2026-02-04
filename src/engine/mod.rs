@@ -1,5 +1,6 @@
-pub mod types;
 pub mod board;
+pub mod fen;
+pub mod types;
 
 use board::Board;
 
@@ -19,7 +20,9 @@ impl Engine {
     }
 
     pub fn set_position_fen(&mut self, _fen: &str) {
-        let _ = _fen;
+        if let Err(err) = self.board.set_fen(_fen) {
+            eprintln!("invalid FEN: {err}");
+        }
     }
 
     pub fn apply_move_list(&mut self, _moves: &[String]) {

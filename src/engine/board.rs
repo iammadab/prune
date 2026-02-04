@@ -1,3 +1,4 @@
+use crate::engine::fen::{parse_fen, STARTPOS_FEN};
 use crate::engine::types::{Color, Piece, Square};
 
 pub struct Board {
@@ -31,6 +32,18 @@ impl Board {
     }
 
     pub fn set_startpos(&mut self) {
-        self.clear();
+        self.set_fen(STARTPOS_FEN)
+            .expect("startpos FEN should be valid");
+    }
+
+    pub fn set_fen(&mut self, fen: &str) -> Result<(), String> {
+        let data = parse_fen(fen)?;
+        self.squares = data.squares;
+        self.side_to_move = data.side_to_move;
+        self.castling_rights = data.castling_rights;
+        self.en_passant = data.en_passant;
+        self.halfmove_clock = data.halfmove_clock;
+        self.fullmove_number = data.fullmove_number;
+        Ok(())
     }
 }
