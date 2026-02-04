@@ -2,7 +2,25 @@ use crate::engine::board::Board;
 use crate::engine::castling::{revoke_all, revoke_kingside, revoke_queenside};
 use crate::engine::types::{Color, Move, Piece, PieceKind, Square};
 
+#[derive(Debug, Clone, Copy)]
+pub struct MoveUndo {
+    pub captured: Option<Piece>,
+    pub captured_square: Option<Square>,
+    pub previous_en_passant: Option<Square>,
+    pub previous_castling_rights: u8,
+    pub previous_halfmove_clock: u32,
+    pub previous_fullmove_number: u32,
+    pub previous_side_to_move: Color,
+    pub rook_move: Option<(Square, Square)>,
+    pub moved_piece: Piece,
+}
+
 pub fn apply_move(board: &mut Board, mv: Move) -> Result<(), String> {
+    let _ = make_move(board, mv)?;
+    Ok(())
+}
+
+pub fn make_move(board: &mut Board, mv: Move) -> Result<MoveUndo, String> {
     let ctx = MoveContext::new(board, mv)?;
     let moved_piece = match ctx.mv.promotion {
         Some(kind) => Piece {
@@ -12,16 +30,49 @@ pub fn apply_move(board: &mut Board, mv: Move) -> Result<(), String> {
         None => ctx.piece,
     };
 
-    let was_capture = apply_piece_move(board, &ctx, moved_piece)?;
+    let mut undo = MoveUndo {
+        captured: None,
+        captured_square: None,
+        previous_en_passant: board.en_passant,
+        previous_castling_rights: board.castling_rights,
+        previous_halfmove_clock: board.halfmove_clock,
+        previous_fullmove_number: board.fullmove_number,
+        previous_side_to_move: board.side_to_move,
+        rook_move: None,
+        moved_piece: ctx.piece,
+    };
+
+    let was_capture = apply_piece_move(board, &ctx, moved_piece, &mut undo)?;
     if ctx.is_castle {
-        apply_castle_rook_move(board, &ctx)?;
+        undo.rook_move = Some(apply_castle_rook_move(board, &ctx)?);
     }
 
     update_en_passant(board, &ctx);
     update_castling_rights(&mut board.castling_rights, &ctx, was_capture);
     update_clocks(board, &ctx, was_capture);
 
-    Ok(())
+    Ok(undo)
+}
+
+pub fn unmake_move(board: &mut Board, mv: Move, undo: MoveUndo) {
+    board.side_to_move = undo.previous_side_to_move;
+    board.halfmove_clock = undo.previous_halfmove_clock;
+    board.fullmove_number = undo.previous_fullmove_number;
+    board.castling_rights = undo.previous_castling_rights;
+    board.en_passant = undo.previous_en_passant;
+
+    if let Some((rook_from, rook_to)) = undo.rook_move {
+        let rook = board.squares[rook_to.index() as usize];
+        board.squares[rook_to.index() as usize] = None;
+        board.squares[rook_from.index() as usize] = rook;
+    }
+
+    board.squares[mv.to.index() as usize] = None;
+    board.squares[mv.from.index() as usize] = Some(undo.moved_piece);
+
+    if let Some(square) = undo.captured_square {
+        board.squares[square.index() as usize] = undo.captured;
+    }
 }
 
 struct MoveContext {
@@ -81,6 +132,7 @@ fn apply_piece_move(
     board: &mut Board,
     ctx: &MoveContext,
     moved_piece: Piece,
+    undo: &mut MoveUndo,
 ) -> Result<bool, String> {
     board.squares[ctx.from_index as usize] = None;
     let mut was_capture = ctx.was_capture;
@@ -90,15 +142,24 @@ fn apply_piece_move(
             Color::White => ctx.to_index - 16,
             Color::Black => ctx.to_index + 16,
         };
+        let capture_square = Square(capture_index);
+        undo.captured = board.squares[capture_index as usize];
+        undo.captured_square = Some(capture_square);
         board.squares[capture_index as usize] = None;
         was_capture = true;
+    } else if ctx.was_capture {
+        undo.captured = board.squares[ctx.to_index as usize];
+        undo.captured_square = Some(ctx.mv.to);
     }
 
     board.squares[ctx.to_index as usize] = Some(moved_piece);
     Ok(was_capture)
 }
 
-fn apply_castle_rook_move(board: &mut Board, ctx: &MoveContext) -> Result<(), String> {
+fn apply_castle_rook_move(
+    board: &mut Board,
+    ctx: &MoveContext,
+) -> Result<(Square, Square), String> {
     let (rook_from_file, rook_to_file) = match ctx.to_file {
         6 => (7, 5),
         2 => (0, 3),
@@ -113,7 +174,7 @@ fn apply_castle_rook_move(board: &mut Board, ctx: &MoveContext) -> Result<(), St
     }
     board.squares[rook_from_index] = None;
     board.squares[rook_to_index] = Some(rook);
-    Ok(())
+    Ok((Square(rook_from_index as u8), Square(rook_to_index as u8)))
 }
 
 fn update_en_passant(board: &mut Board, ctx: &MoveContext) {

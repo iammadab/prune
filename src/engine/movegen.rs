@@ -62,6 +62,28 @@ pub fn generate_pseudo_legal(board: &Board) -> MoveList {
     moves
 }
 
+pub fn generate_legal(board: &mut Board) -> MoveList {
+    let pseudo = generate_pseudo_legal(board);
+    let mut legal = Vec::new();
+    for mv in pseudo {
+        let undo = match board.make_move(mv) {
+            Ok(undo) => undo,
+            Err(_) => continue,
+        };
+        let mover = match board.side_to_move {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        };
+        let in_check = is_king_in_check(board, mover);
+        board.unmake_move(mv, undo);
+        if !in_check {
+            legal.push(mv);
+        }
+    }
+
+    legal
+}
+
 fn generate_pawn_moves(board: &Board, from: Square, piece: Piece, moves: &mut MoveList) {
     let from_rank = from.index() >> 4;
     match piece.color {
@@ -299,6 +321,132 @@ fn generate_castling_for_color(board: &Board, color: Color, rank: u8, moves: &mu
     let _ = king_piece;
 }
 
+fn is_king_in_check(board: &Board, color: Color) -> bool {
+    let king_square = match find_king(board, color) {
+        Some(square) => square,
+        None => return false,
+    };
+    is_square_attacked(board, king_square, opposite_color(color))
+}
+
+fn find_king(board: &Board, color: Color) -> Option<Square> {
+    for index in 0u8..128u8 {
+        if !is_valid_square(index) {
+            continue;
+        }
+        match board.squares[index as usize] {
+            Some(piece) if piece.color == color && piece.kind == PieceKind::King => {
+                return Some(Square(index));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn is_square_attacked(board: &Board, square: Square, by_color: Color) -> bool {
+    if is_attacked_by_pawn(board, square, by_color) {
+        return true;
+    }
+    if is_attacked_by_jump(board, square, by_color, PieceKind::Knight, &KNIGHT_OFFSETS) {
+        return true;
+    }
+    if is_attacked_by_slider(board, square, by_color, PieceKind::Bishop, &BISHOP_OFFSETS) {
+        return true;
+    }
+    if is_attacked_by_slider(board, square, by_color, PieceKind::Rook, &ROOK_OFFSETS) {
+        return true;
+    }
+    if is_attacked_by_slider(board, square, by_color, PieceKind::Queen, &BISHOP_OFFSETS) {
+        return true;
+    }
+    if is_attacked_by_slider(board, square, by_color, PieceKind::Queen, &ROOK_OFFSETS) {
+        return true;
+    }
+    if is_attacked_by_jump(board, square, by_color, PieceKind::King, &KING_OFFSETS) {
+        return true;
+    }
+
+    false
+}
+
+fn is_attacked_by_pawn(board: &Board, square: Square, by_color: Color) -> bool {
+    let offsets: [i8; 2] = match by_color {
+        Color::White => [-15, -17],
+        Color::Black => [15, 17],
+    };
+    for offset in offsets {
+        let attacker = match offset_square(square, offset) {
+            Some(attacker) => attacker,
+            None => continue,
+        };
+        if let Some(piece) = board.squares[attacker.index() as usize] {
+            if piece.color == by_color && piece.kind == PieceKind::Pawn {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn is_attacked_by_jump(
+    board: &Board,
+    square: Square,
+    by_color: Color,
+    kind: PieceKind,
+    offsets: &[i8],
+) -> bool {
+    for offset in offsets {
+        let attacker = match offset_square(square, *offset) {
+            Some(attacker) => attacker,
+            None => continue,
+        };
+        if let Some(piece) = board.squares[attacker.index() as usize] {
+            if piece.color == by_color && piece.kind == kind {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn is_attacked_by_slider(
+    board: &Board,
+    square: Square,
+    by_color: Color,
+    kind: PieceKind,
+    offsets: &[i8],
+) -> bool {
+    for offset in offsets {
+        let mut current = square;
+        loop {
+            let next = match offset_square(current, *offset) {
+                Some(square) => square,
+                None => break,
+            };
+            match board.squares[next.index() as usize] {
+                None => {
+                    current = next;
+                }
+                Some(piece) => {
+                    if piece.color == by_color && piece.kind == kind {
+                        return true;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn opposite_color(color: Color) -> Color {
+    match color {
+        Color::White => Color::Black,
+        Color::Black => Color::White,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -349,5 +497,13 @@ mod tests {
         let uci_moves: Vec<String> = moves.iter().filter_map(|mv| uci_from_move(*mv)).collect();
         assert!(uci_moves.iter().any(|mv| mv == "e1g1"));
         assert!(uci_moves.iter().any(|mv| mv == "e1c1"));
+    }
+
+    #[test]
+    fn generate_legal_startpos_count() {
+        let mut board = Board::new();
+        board.set_startpos();
+        let moves = generate_legal(&mut board);
+        assert_eq!(moves.len(), 20);
     }
 }

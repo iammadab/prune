@@ -60,6 +60,14 @@ impl Board {
     pub fn apply_move(&mut self, mv: Move) -> Result<(), String> {
         apply_move::apply_move(self, mv)
     }
+
+    pub fn make_move(&mut self, mv: Move) -> Result<apply_move::MoveUndo, String> {
+        apply_move::make_move(self, mv)
+    }
+
+    pub fn unmake_move(&mut self, mv: Move, undo: apply_move::MoveUndo) {
+        apply_move::unmake_move(self, mv, undo)
+    }
 }
 
 #[cfg(test)]
