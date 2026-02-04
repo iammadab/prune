@@ -26,3 +26,6 @@
 
 # Next Actions
 - 
+
+# Documentation Notes
+- Document apply_move logic to better understand what happens there.
