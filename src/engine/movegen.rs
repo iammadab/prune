@@ -1,4 +1,5 @@
 use crate::engine::board::Board;
+use crate::engine::castling::{has_kingside, has_queenside};
 use crate::engine::types::{is_valid_square, Color, Move, Piece, PieceKind, Square};
 
 pub type MoveList = Vec<Move>;
@@ -56,6 +57,8 @@ pub fn generate_pseudo_legal(board: &Board) -> MoveList {
         }
     }
 
+    generate_castling_moves(board, &mut moves);
+
     moves
 }
 
@@ -84,6 +87,8 @@ fn generate_pawn_moves(board: &Board, from: Square, piece: Piece, moves: &mut Mo
 
             generate_pawn_capture(board, from, 15, moves);
             generate_pawn_capture(board, from, 17, moves);
+            generate_en_passant(board, from, 15, moves);
+            generate_en_passant(board, from, 17, moves);
         }
         Color::Black => {
             let one = offset_square(from, -16);
@@ -107,6 +112,8 @@ fn generate_pawn_moves(board: &Board, from: Square, piece: Piece, moves: &mut Mo
 
             generate_pawn_capture(board, from, -15, moves);
             generate_pawn_capture(board, from, -17, moves);
+            generate_en_passant(board, from, -15, moves);
+            generate_en_passant(board, from, -17, moves);
         }
     }
 }
@@ -150,6 +157,26 @@ fn generate_pawn_capture(board: &Board, from: Square, offset: i8, moves: &mut Mo
     }
 
     add_pawn_advance(from, target, moves);
+}
+
+fn generate_en_passant(board: &Board, from: Square, offset: i8, moves: &mut MoveList) {
+    let ep = match board.en_passant {
+        Some(square) => square,
+        None => return,
+    };
+    let target = match offset_square(from, offset) {
+        Some(square) => square,
+        None => return,
+    };
+    if target != ep {
+        return;
+    }
+
+    moves.push(Move {
+        from,
+        to: ep,
+        promotion: None,
+    });
 }
 
 fn generate_jump_moves(
@@ -218,11 +245,65 @@ fn generate_slider_moves(
     }
 }
 
+fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
+    let side = board.side_to_move;
+    match side {
+        Color::White => generate_castling_for_color(board, side, 0, moves),
+        Color::Black => generate_castling_for_color(board, side, 7, moves),
+    }
+}
+
+fn generate_castling_for_color(board: &Board, color: Color, rank: u8, moves: &mut MoveList) {
+    let king_square = Square(rank * 16 + 4);
+    let king_piece = match board.squares[king_square.index() as usize] {
+        Some(piece) if piece.kind == PieceKind::King && piece.color == color => piece,
+        _ => return,
+    };
+
+    if has_kingside(board.castling_rights, color) {
+        let f_square = Square(rank * 16 + 5);
+        let g_square = Square(rank * 16 + 6);
+        let rook_square = Square(rank * 16 + 7);
+        let rook_ok = matches!(board.squares[rook_square.index() as usize], Some(Piece { color: c, kind: PieceKind::Rook }) if c == color);
+        if rook_ok
+            && board.squares[f_square.index() as usize].is_none()
+            && board.squares[g_square.index() as usize].is_none()
+        {
+            moves.push(Move {
+                from: king_square,
+                to: g_square,
+                promotion: None,
+            });
+        }
+    }
+
+    if has_queenside(board.castling_rights, color) {
+        let b_square = Square(rank * 16 + 1);
+        let c_square = Square(rank * 16 + 2);
+        let d_square = Square(rank * 16 + 3);
+        let rook_square = Square(rank * 16 + 0);
+        let rook_ok = matches!(board.squares[rook_square.index() as usize], Some(Piece { color: c, kind: PieceKind::Rook }) if c == color);
+        if rook_ok
+            && board.squares[b_square.index() as usize].is_none()
+            && board.squares[c_square.index() as usize].is_none()
+            && board.squares[d_square.index() as usize].is_none()
+        {
+            moves.push(Move {
+                from: king_square,
+                to: c_square,
+                promotion: None,
+            });
+        }
+    }
+
+    let _ = king_piece;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::engine::board::Board;
-    use crate::engine::types::square_from_algebraic;
+    use crate::engine::types::{square_from_algebraic, uci_from_move};
 
     #[test]
     fn offset_square_rejects_offboard() {
@@ -244,5 +325,29 @@ mod tests {
         board.set_startpos();
         let moves = generate_pseudo_legal(&board);
         assert_eq!(moves.len(), 20);
+    }
+
+    #[test]
+    fn generate_en_passant_move() {
+        let mut board = Board::new();
+        board.set_fen("8/8/8/3pP3/8/8/8/8 w - d6 0 1").expect("fen");
+        let moves = generate_pseudo_legal(&board);
+        let has_ep = moves
+            .iter()
+            .filter_map(|mv| uci_from_move(*mv))
+            .any(|uci| uci == "e5d6");
+        assert!(has_ep);
+    }
+
+    #[test]
+    fn generate_castling_moves() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+            .expect("fen");
+        let moves = generate_pseudo_legal(&board);
+        let uci_moves: Vec<String> = moves.iter().filter_map(|mv| uci_from_move(*mv)).collect();
+        assert!(uci_moves.iter().any(|mv| mv == "e1g1"));
+        assert!(uci_moves.iter().any(|mv| mv == "e1c1"));
     }
 }
