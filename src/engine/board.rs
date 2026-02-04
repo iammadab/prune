@@ -61,6 +61,9 @@ impl Board {
         let to_index = mv.to.index() as usize;
         let piece =
             self.squares[from_index].ok_or_else(|| "no piece on from square".to_string())?;
+        if piece.color != self.side_to_move {
+            return Err("piece does not match side to move".to_string());
+        }
         let was_capture = self.squares[to_index].is_some();
 
         let moved_piece = match mv.promotion {
@@ -113,5 +116,15 @@ mod tests {
         assert_eq!(piece.kind, PieceKind::Pawn);
         assert_eq!(piece.color, Color::White);
         assert_eq!(board.side_to_move, Color::Black);
+    }
+
+    #[test]
+    fn apply_move_rejects_wrong_side() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        let mv = move_from_uci("e7e5").expect("move");
+        let err = board.apply_move(mv).unwrap_err();
+        assert!(err.contains("side to move"));
     }
 }

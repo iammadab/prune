@@ -1,11 +1,9 @@
+use crate::engine::castling::{
+    CASTLE_BLACK_KING, CASTLE_BLACK_QUEEN, CASTLE_WHITE_KING, CASTLE_WHITE_QUEEN,
+};
 use crate::engine::types::{
     algebraic_from_square, is_valid_square, square_from_algebraic, Color, Piece, PieceKind, Square,
 };
-
-const CASTLE_WHITE_KING: u8 = 1 << 0;
-const CASTLE_WHITE_QUEEN: u8 = 1 << 1;
-const CASTLE_BLACK_KING: u8 = 1 << 2;
-const CASTLE_BLACK_QUEEN: u8 = 1 << 3;
 
 pub const STARTPOS_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
