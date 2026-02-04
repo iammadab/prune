@@ -84,6 +84,25 @@ pub fn generate_legal(board: &mut Board) -> MoveList {
     legal
 }
 
+pub fn perft(board: &mut Board, depth: u32) -> u64 {
+    if depth == 0 {
+        return 1;
+    }
+
+    let moves = generate_legal(board);
+    let mut nodes = 0u64;
+    for mv in moves {
+        let undo = match board.make_move(mv) {
+            Ok(undo) => undo,
+            Err(_) => continue,
+        };
+        nodes += perft(board, depth - 1);
+        board.unmake_move(mv, undo);
+    }
+
+    nodes
+}
+
 fn generate_pawn_moves(board: &Board, from: Square, piece: Piece, moves: &mut MoveList) {
     let from_rank = from.index() >> 4;
     match piece.color {
@@ -505,5 +524,15 @@ mod tests {
         board.set_startpos();
         let moves = generate_legal(&mut board);
         assert_eq!(moves.len(), 20);
+    }
+
+    #[test]
+    fn perft_startpos_depths() {
+        let mut board = Board::new();
+        board.set_startpos();
+        assert_eq!(perft(&mut board, 1), 20);
+        assert_eq!(perft(&mut board, 2), 400);
+        assert_eq!(perft(&mut board, 3), 8902);
+        assert_eq!(perft(&mut board, 4), 197281);
     }
 }
