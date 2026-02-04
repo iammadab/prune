@@ -1,6 +1,6 @@
-use crate::engine::castling::{revoke_all, revoke_kingside, revoke_queenside};
+use crate::engine::apply_move;
 use crate::engine::fen::{parse_fen, STARTPOS_FEN};
-use crate::engine::types::{move_from_uci, Color, Move, Piece, PieceKind, Square};
+use crate::engine::types::{move_from_uci, Color, Move, Piece, Square};
 
 pub struct Board {
     pub squares: [Option<Piece>; 128],
@@ -58,136 +58,7 @@ impl Board {
     }
 
     pub fn apply_move(&mut self, mv: Move) -> Result<(), String> {
-        let from_index = mv.from.index() as usize;
-        let to_index = mv.to.index() as usize;
-        let piece =
-            self.squares[from_index].ok_or_else(|| "no piece on from square".to_string())?;
-        if piece.color != self.side_to_move {
-            return Err("piece does not match side to move".to_string());
-        }
-        let mut was_capture = self.squares[to_index].is_some();
-        let prev_en_passant = self.en_passant;
-        let is_en_passant_capture = piece.kind == PieceKind::Pawn
-            && prev_en_passant.is_some()
-            && prev_en_passant == Some(mv.to)
-            && !was_capture;
-        let from_file = mv.from.index() & 0x0f;
-        let to_file = mv.to.index() & 0x0f;
-        let from_rank = mv.from.index() >> 4;
-        let to_rank = mv.to.index() >> 4;
-        let is_castle = piece.kind == PieceKind::King
-            && from_rank == to_rank
-            && (from_file as i8 - to_file as i8).abs() == 2;
-
-        let moved_piece = match mv.promotion {
-            Some(kind) => Piece {
-                color: piece.color,
-                kind,
-            },
-            None => piece,
-        };
-
-        self.squares[from_index] = None;
-        if is_en_passant_capture {
-            let capture_index = match piece.color {
-                Color::White => to_index - 16,
-                Color::Black => to_index + 16,
-            };
-            self.squares[capture_index] = None;
-            was_capture = true;
-        }
-        self.squares[to_index] = Some(moved_piece);
-
-        if is_castle {
-            let (rook_from_file, rook_to_file) = match to_file {
-                6 => (7, 5),
-                2 => (0, 3),
-                _ => return Err("invalid castling target".to_string()),
-            };
-            let rook_rank = from_rank;
-            let rook_from_index = (rook_rank * 16 + rook_from_file) as usize;
-            let rook_to_index = (rook_rank * 16 + rook_to_file) as usize;
-            let rook =
-                self.squares[rook_from_index].ok_or_else(|| "no rook for castling".to_string())?;
-            if rook.kind != PieceKind::Rook || rook.color != piece.color {
-                return Err("invalid rook for castling".to_string());
-            }
-            self.squares[rook_from_index] = None;
-            self.squares[rook_to_index] = Some(rook);
-        }
-
-        let mut new_en_passant = None;
-        if piece.kind == PieceKind::Pawn {
-            let from_rank = mv.from.index() >> 4;
-            let to_rank = mv.to.index() >> 4;
-            if piece.color == Color::White && from_rank == 1 && to_rank == 3 {
-                new_en_passant = Some(Square(mv.from.index() + 16));
-            } else if piece.color == Color::Black && from_rank == 6 && to_rank == 4 {
-                new_en_passant = Some(Square(mv.from.index() - 16));
-            }
-        }
-        self.en_passant = new_en_passant;
-
-        let is_pawn = piece.kind == PieceKind::Pawn;
-        if is_pawn || was_capture {
-            self.halfmove_clock = 0;
-        } else {
-            self.halfmove_clock = self.halfmove_clock.saturating_add(1);
-        }
-
-        update_castling_rights(
-            &mut self.castling_rights,
-            piece,
-            from_file,
-            from_rank,
-            to_file,
-            to_rank,
-            was_capture,
-        );
-
-        if self.side_to_move == Color::Black {
-            self.fullmove_number = self.fullmove_number.saturating_add(1);
-        }
-        self.side_to_move = match self.side_to_move {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        };
-
-        Ok(())
-    }
-}
-
-fn update_castling_rights(
-    rights: &mut u8,
-    piece: Piece,
-    from_file: u8,
-    from_rank: u8,
-    to_file: u8,
-    to_rank: u8,
-    was_capture: bool,
-) {
-    if piece.kind == PieceKind::King {
-        revoke_all(rights, piece.color);
-    }
-
-    if piece.kind == PieceKind::Rook {
-        match (piece.color, from_file, from_rank) {
-            (Color::White, 0, 0) => revoke_queenside(rights, Color::White),
-            (Color::White, 7, 0) => revoke_kingside(rights, Color::White),
-            (Color::Black, 0, 7) => revoke_queenside(rights, Color::Black),
-            (Color::Black, 7, 7) => revoke_kingside(rights, Color::Black),
-            _ => {}
-        }
-    }
-
-    if was_capture {
-        match (to_file, to_rank) {
-            (0, 0) => revoke_queenside(rights, Color::White),
-            (7, 0) => revoke_kingside(rights, Color::White),
-            (0, 7) => revoke_queenside(rights, Color::Black),
-            (7, 7) => revoke_kingside(rights, Color::Black),
-            _ => {}
-        }
+        apply_move::apply_move(self, mv)
     }
 }
 

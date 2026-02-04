@@ -1,3 +1,4 @@
+pub mod apply_move;
 pub mod board;
 pub mod castling;
 pub mod fen;
