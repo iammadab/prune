@@ -26,7 +26,9 @@ impl Engine {
     }
 
     pub fn apply_move_list(&mut self, _moves: &[String]) {
-        let _ = _moves;
+        if let Err(err) = self.board.apply_uci_move_list(_moves) {
+            eprintln!("invalid move list: {err}");
+        }
     }
 
     pub fn search_depth(&mut self, _depth: u32) -> String {
