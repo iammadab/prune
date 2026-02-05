@@ -1,6 +1,7 @@
 pub mod apply_move;
 pub mod board;
 pub mod castling;
+pub mod eval;
 pub mod fen;
 pub mod movegen;
 pub mod types;
