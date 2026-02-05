@@ -26,14 +26,10 @@ impl SearchAlgorithm for MinimaxSearch {
         }
 
         for mv in moves {
-            let undo = match board.make_move(mv) {
-                Ok(undo) => undo,
-                Err(_) => continue,
-            };
-            let score = -negamax(board, evaluator, depth.saturating_sub(1), &mut nodes);
-            board.unmake_move(mv, undo);
-            if score > best_score {
-                best_score = score;
+            let collapsed_score =
+                collapsed_score_for_move(board, evaluator, depth.saturating_sub(1), mv, &mut nodes);
+            if collapsed_score > best_score {
+                best_score = collapsed_score;
                 best_move = Some(mv);
             }
         }
@@ -46,12 +42,33 @@ impl SearchAlgorithm for MinimaxSearch {
     }
 }
 
-// Negamax explainer:
-// Our evaluator always scores the position from the side-to-move’s perspective.
+fn collapsed_score_for_move(
+    board: &mut Board,
+    evaluator: &impl Evaluator,
+    depth: u32,
+    mv: crate::engine::types::Move,
+    nodes: &mut u64,
+) -> i32 {
+    let undo = match board.make_move(mv) {
+        Ok(undo) => undo,
+        Err(_) => return i32::MIN,
+    };
+    let collapsed_score = -collapse_opponent_replies(board, evaluator, depth, nodes);
+    board.unmake_move(mv, undo);
+    collapsed_score
+}
+
+// Opponent replies explainer:
+// Our evaluator always scores the position from the side-to-move's perspective.
 // When we make a move, the side to move flips, so a good score for them is a bad
-// score for us. That’s why we negate the child score: it “re-centers” the value
-// to the current player. This collapses max/min into a single loop.
-fn negamax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mut u64) -> i32 {
+// score for us. We negate the reply score to re-center it for the current player.
+// This collapses all opponent replies into a single worst-case score for the move.
+fn collapse_opponent_replies(
+    board: &mut Board,
+    evaluator: &impl Evaluator,
+    depth: u32,
+    nodes: &mut u64,
+) -> i32 {
     if depth == 0 {
         *nodes += 1;
         return evaluator.evaluate(board);
@@ -69,7 +86,7 @@ fn negamax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mu
             Ok(undo) => undo,
             Err(_) => continue,
         };
-        let score = -negamax(board, evaluator, depth - 1, nodes);
+        let score = -collapse_opponent_replies(board, evaluator, depth - 1, nodes);
         board.unmake_move(mv, undo);
         if score > best {
             best = score;
