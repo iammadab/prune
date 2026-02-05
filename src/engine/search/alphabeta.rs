@@ -32,6 +32,7 @@ impl SearchAlgorithm for AlphaBetaSearch {
                 Ok(undo) => undo,
                 Err(_) => continue,
             };
+            // Collapse opponent replies into a single score for this move.
             let score = -alphabeta(
                 board,
                 evaluator,
@@ -91,6 +92,7 @@ fn alphabeta(
         if score > alpha {
             alpha = score;
         }
+        // If this move's collapsed score can't beat our current best, stop exploring replies.
         if alpha >= beta {
             break;
         }
