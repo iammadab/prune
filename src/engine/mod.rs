@@ -4,6 +4,7 @@ pub mod castling;
 pub mod eval;
 pub mod fen;
 pub mod movegen;
+pub mod search;
 pub mod types;
 
 use board::Board;
