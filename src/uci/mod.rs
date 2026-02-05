@@ -1,6 +1,6 @@
+use crate::engine::Engine;
 use crate::engine::eval::Evaluator;
 use crate::engine::search::SearchAlgorithm;
-use crate::engine::Engine;
 use std::io::{self, Write};
 
 mod commands;
@@ -47,7 +47,7 @@ pub fn run_loop<E: Evaluator, S: SearchAlgorithm>(engine: &mut Engine<E, S>) {
                 }
             }
             Command::Go(cmd) => {
-                let depth = cmd.depth.unwrap_or(1);
+                let depth = cmd.depth.unwrap_or(6);
                 let status = engine.game_status();
                 match status {
                     crate::engine::types::GameStatus::Ongoing => {
