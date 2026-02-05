@@ -6,6 +6,8 @@ pub mod movegen;
 pub mod types;
 
 use board::Board;
+use movegen::game_status;
+use types::GameStatus;
 
 pub struct Engine {
     board: Board,
@@ -37,6 +39,10 @@ impl Engine {
     pub fn search_depth(&mut self, _depth: u32) -> String {
         let _ = _depth;
         "0000".to_string()
+    }
+
+    pub fn game_status(&mut self) -> GameStatus {
+        game_status(&mut self.board)
     }
 
     pub fn stop_search(&mut self) {

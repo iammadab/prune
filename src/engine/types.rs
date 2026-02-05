@@ -5,6 +5,13 @@ pub enum Color {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameStatus {
+    Ongoing,
+    Checkmate,
+    Stalemate,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PieceKind {
     Pawn,
     Knight,
