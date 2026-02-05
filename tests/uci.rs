@@ -29,6 +29,31 @@ fn uci_handshake_works() {
     assert!(stdout.contains("readyok"));
 }
 
+#[test]
+fn uci_reports_invalid_fen() {
+    let exe = resolve_engine_exe();
+    let mut child = Command::new(exe)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn engine binary");
+
+    {
+        let stdin = child.stdin.as_mut().expect("failed to open stdin");
+        stdin
+            .write_all(b"uci\nposition fen 8/8/8/8/8/8/8/8 w - - 0 1\nquit\n")
+            .expect("failed to write to stdin");
+    }
+
+    let output = child
+        .wait_with_output()
+        .expect("failed to read engine output");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    assert!(stdout.contains("info string invalid FEN:"));
+    assert!(stdout.contains("missing white king"));
+}
+
 fn resolve_engine_exe() -> PathBuf {
     if let Some(exe) = option_env!("CARGO_BIN_EXE_chess_engine") {
         return PathBuf::from(exe);

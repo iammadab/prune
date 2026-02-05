@@ -33,11 +33,17 @@ pub fn run_loop<E: Evaluator>(engine: &mut Engine<E>) {
                 engine.reset_state();
             }
             Command::Position(cmd) => {
-                match cmd.fen.as_deref() {
+                let set_result = match cmd.fen.as_deref() {
                     Some(fen) => engine.set_position_fen(fen),
-                    None => engine.set_position_startpos(),
+                    None => {
+                        engine.set_position_startpos();
+                        Ok(())
+                    }
+                };
+                match set_result {
+                    Ok(()) => engine.apply_move_list(&cmd.moves),
+                    Err(err) => write_line(&format!("info string invalid FEN: {err}")),
                 }
-                engine.apply_move_list(&cmd.moves);
             }
             Command::Go(cmd) => {
                 let depth = cmd.depth.unwrap_or(1);
