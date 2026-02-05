@@ -1,6 +1,6 @@
 use crate::engine::board::Board;
 use crate::engine::castling::{has_kingside, has_queenside};
-use crate::engine::types::{is_valid_square, Color, Move, Piece, PieceKind, Square};
+use crate::engine::types::{is_valid_square, Color, GameStatus, Move, Piece, PieceKind, Square};
 
 pub type MoveList = Vec<Move>;
 
@@ -101,6 +101,19 @@ pub fn perft(board: &mut Board, depth: u32) -> u64 {
     }
 
     nodes
+}
+
+pub fn game_status(board: &mut Board) -> GameStatus {
+    let moves = generate_legal(board);
+    if moves.is_empty() {
+        if is_king_in_check(board, board.side_to_move) {
+            GameStatus::Checkmate
+        } else {
+            GameStatus::Stalemate
+        }
+    } else {
+        GameStatus::Ongoing
+    }
 }
 
 fn generate_pawn_moves(board: &Board, from: Square, piece: Piece, moves: &mut MoveList) {
