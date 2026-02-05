@@ -382,7 +382,7 @@ fn find_king(board: &Board, color: Color) -> Option<Square> {
     None
 }
 
-fn is_square_attacked(board: &Board, square: Square, by_color: Color) -> bool {
+pub fn is_square_attacked(board: &Board, square: Square, by_color: Color) -> bool {
     if is_attacked_by_pawn(board, square, by_color) {
         return true;
     }
@@ -516,7 +516,9 @@ mod tests {
     #[test]
     fn generate_en_passant_move() {
         let mut board = Board::new();
-        board.set_fen("8/8/8/3pP3/8/8/8/8 w - d6 0 1").expect("fen");
+        board
+            .set_fen("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1")
+            .expect("fen");
         let moves = generate_pseudo_legal(&board);
         let has_ep = moves
             .iter()
@@ -541,7 +543,7 @@ mod tests {
     fn generate_legal_disallows_castling_out_of_check() {
         let mut board = Board::new();
         board
-            .set_fen("r3k2r/8/8/8/8/8/8/R3K1R1 w KQkq - 0 1")
+            .set_fen("k3r3/8/8/8/8/8/8/4K2R w K - 0 1")
             .expect("fen");
         let moves = generate_legal(&mut board);
         let uci_moves: Vec<String> = moves.iter().filter_map(|mv| uci_from_move(*mv)).collect();
