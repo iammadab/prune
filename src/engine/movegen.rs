@@ -296,10 +296,14 @@ fn generate_castling_moves(board: &Board, moves: &mut MoveList) {
 
 fn generate_castling_for_color(board: &Board, color: Color, rank: u8, moves: &mut MoveList) {
     let king_square = Square(rank * 16 + 4);
-    let king_piece = match board.squares[king_square.index() as usize] {
-        Some(piece) if piece.kind == PieceKind::King && piece.color == color => piece,
+    match board.squares[king_square.index() as usize] {
+        Some(piece) if piece.kind == PieceKind::King && piece.color == color => {}
         _ => return,
     };
+    let opponent = opposite_color(color);
+    if is_square_attacked(board, king_square, opponent) {
+        return;
+    }
 
     if has_kingside(board.castling_rights, color) {
         let f_square = Square(rank * 16 + 5);
@@ -309,6 +313,8 @@ fn generate_castling_for_color(board: &Board, color: Color, rank: u8, moves: &mu
         if rook_ok
             && board.squares[f_square.index() as usize].is_none()
             && board.squares[g_square.index() as usize].is_none()
+            && !is_square_attacked(board, f_square, opponent)
+            && !is_square_attacked(board, g_square, opponent)
         {
             moves.push(Move {
                 from: king_square,
@@ -328,6 +334,8 @@ fn generate_castling_for_color(board: &Board, color: Color, rank: u8, moves: &mu
             && board.squares[b_square.index() as usize].is_none()
             && board.squares[c_square.index() as usize].is_none()
             && board.squares[d_square.index() as usize].is_none()
+            && !is_square_attacked(board, d_square, opponent)
+            && !is_square_attacked(board, c_square, opponent)
         {
             moves.push(Move {
                 from: king_square,
@@ -336,8 +344,6 @@ fn generate_castling_for_color(board: &Board, color: Color, rank: u8, moves: &mu
             });
         }
     }
-
-    let _ = king_piece;
 }
 
 fn is_king_in_check(board: &Board, color: Color) -> bool {
