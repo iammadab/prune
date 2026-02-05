@@ -1,5 +1,5 @@
 use crate::engine::apply_move;
-use crate::engine::fen::{parse_fen, STARTPOS_FEN};
+use crate::engine::fen::{parse_fen, validate_fen_semantics, STARTPOS_FEN};
 use crate::engine::types::{move_from_uci, Color, Move, Piece, Square};
 
 pub struct Board {
@@ -39,6 +39,7 @@ impl Board {
 
     pub fn set_fen(&mut self, fen: &str) -> Result<(), String> {
         let data = parse_fen(fen)?;
+        validate_fen_semantics(&data)?;
         self.squares = data.squares;
         self.side_to_move = data.side_to_move;
         self.castling_rights = data.castling_rights;
