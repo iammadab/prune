@@ -40,8 +40,17 @@ pub fn run_loop(engine: &mut Engine) {
             }
             Command::Go(cmd) => {
                 let depth = cmd.depth.unwrap_or(1);
-                let bestmove = engine.search_depth(depth);
-                write_line(&format!("bestmove {bestmove}"));
+                let status = engine.game_status();
+                match status {
+                    crate::engine::types::GameStatus::Ongoing => {
+                        let bestmove = engine.search_depth(depth);
+                        write_line(&format!("bestmove {bestmove}"));
+                    }
+                    crate::engine::types::GameStatus::Checkmate
+                    | crate::engine::types::GameStatus::Stalemate => {
+                        write_line("bestmove 0000");
+                    }
+                }
             }
             Command::Stop => {
                 engine.stop_search();
