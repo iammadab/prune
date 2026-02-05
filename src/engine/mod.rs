@@ -34,10 +34,8 @@ impl<E: Evaluator> Engine<E> {
         self.board.set_startpos();
     }
 
-    pub fn set_position_fen(&mut self, _fen: &str) {
-        if let Err(err) = self.board.set_fen(_fen) {
-            eprintln!("invalid FEN: {err}");
-        }
+    pub fn set_position_fen(&mut self, fen: &str) -> Result<(), String> {
+        self.board.set_fen(fen)
     }
 
     pub fn apply_move_list(&mut self, _moves: &[String]) {
