@@ -525,6 +525,39 @@ mod tests {
     }
 
     #[test]
+    fn generate_legal_disallows_castling_out_of_check() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/8/8/8/8/8/8/R3K1R1 w KQkq - 0 1")
+            .expect("fen");
+        let moves = generate_legal(&mut board);
+        let uci_moves: Vec<String> = moves.iter().filter_map(|mv| uci_from_move(*mv)).collect();
+        assert!(!uci_moves.iter().any(|mv| mv == "e1g1"));
+    }
+
+    #[test]
+    fn generate_legal_disallows_castling_through_check() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/5r2/8/8/8/8/8/R3K2R w KQkq - 0 1")
+            .expect("fen");
+        let moves = generate_legal(&mut board);
+        let uci_moves: Vec<String> = moves.iter().filter_map(|mv| uci_from_move(*mv)).collect();
+        assert!(!uci_moves.iter().any(|mv| mv == "e1g1"));
+    }
+
+    #[test]
+    fn generate_legal_disallows_castling_into_check() {
+        let mut board = Board::new();
+        board
+            .set_fen("r3k2r/6r1/8/8/8/8/8/R3K2R w KQkq - 0 1")
+            .expect("fen");
+        let moves = generate_legal(&mut board);
+        let uci_moves: Vec<String> = moves.iter().filter_map(|mv| uci_from_move(*mv)).collect();
+        assert!(!uci_moves.iter().any(|mv| mv == "e1g1"));
+    }
+
+    #[test]
     fn generate_legal_startpos_count() {
         let mut board = Board::new();
         board.set_startpos();
