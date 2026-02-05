@@ -489,7 +489,7 @@ fn opposite_color(color: Color) -> Color {
 mod tests {
     use super::*;
     use crate::engine::board::Board;
-    use crate::engine::types::{square_from_algebraic, uci_from_move};
+    use crate::engine::types::{square_from_algebraic, uci_from_move, GameStatus};
 
     #[test]
     fn offset_square_rejects_offboard() {
@@ -586,5 +586,30 @@ mod tests {
         assert_eq!(perft(&mut board, 2), 400);
         assert_eq!(perft(&mut board, 3), 8902);
         assert_eq!(perft(&mut board, 4), 197281);
+    }
+
+    #[test]
+    fn game_status_detects_checkmate() {
+        let mut board = Board::new();
+        board
+            .set_fen("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1")
+            .expect("fen");
+        assert_eq!(game_status(&mut board), GameStatus::Checkmate);
+    }
+
+    #[test]
+    fn game_status_detects_stalemate() {
+        let mut board = Board::new();
+        board
+            .set_fen("7k/5K2/6Q1/8/8/8/8/8 b - - 0 1")
+            .expect("fen");
+        assert_eq!(game_status(&mut board), GameStatus::Stalemate);
+    }
+
+    #[test]
+    fn game_status_detects_ongoing() {
+        let mut board = Board::new();
+        board.set_startpos();
+        assert_eq!(game_status(&mut board), GameStatus::Ongoing);
     }
 }
