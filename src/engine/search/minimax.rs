@@ -30,7 +30,7 @@ impl SearchAlgorithm for MinimaxSearch {
                 Ok(undo) => undo,
                 Err(_) => continue,
             };
-            let score = -minimax(board, evaluator, depth.saturating_sub(1), &mut nodes);
+            let score = -negamax(board, evaluator, depth.saturating_sub(1), &mut nodes);
             board.unmake_move(mv, undo);
             if score > best_score {
                 best_score = score;
@@ -46,7 +46,7 @@ impl SearchAlgorithm for MinimaxSearch {
     }
 }
 
-fn minimax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mut u64) -> i32 {
+fn negamax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mut u64) -> i32 {
     if depth == 0 {
         *nodes += 1;
         return evaluator.evaluate(board);
@@ -64,7 +64,7 @@ fn minimax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mu
             Ok(undo) => undo,
             Err(_) => continue,
         };
-        let score = -minimax(board, evaluator, depth - 1, nodes);
+        let score = -negamax(board, evaluator, depth - 1, nodes);
         board.unmake_move(mv, undo);
         if score > best {
             best = score;
