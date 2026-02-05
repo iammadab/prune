@@ -28,3 +28,28 @@ impl Evaluator for MaterialEvaluator {
         score
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn material_eval_scores_side_to_move() {
+        let mut board = Board::new();
+        board.set_fen("8/8/8/8/8/8/P7/8 w - - 0 1").expect("fen");
+        let eval = MaterialEvaluator.evaluate(&board);
+        assert_eq!(eval, 100);
+
+        board.set_fen("8/8/8/8/8/8/P7/8 b - - 0 1").expect("fen");
+        let eval = MaterialEvaluator.evaluate(&board);
+        assert_eq!(eval, -100);
+    }
+
+    #[test]
+    fn material_eval_balances_both_sides() {
+        let mut board = Board::new();
+        board.set_fen("8/8/8/8/8/8/Pp6/8 w - - 0 1").expect("fen");
+        let eval = MaterialEvaluator.evaluate(&board);
+        assert_eq!(eval, 0);
+    }
+}
