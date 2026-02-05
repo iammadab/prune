@@ -16,7 +16,7 @@
 - 
 
 ## Search
-- 
+- Need to understand alpha-beta search properly.
 
 ## Testing/Perft
 - 
