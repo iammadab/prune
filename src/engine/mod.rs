@@ -8,25 +8,22 @@ pub mod search;
 pub mod types;
 
 use board::Board;
-use eval::{Evaluator, MaterialEvaluator};
+use eval::Evaluator;
 use movegen::game_status;
+use search::{SearchAlgorithm, SearchResult};
 use types::GameStatus;
 
-pub struct Engine<E: Evaluator = MaterialEvaluator> {
+pub struct Engine<E: Evaluator, S: SearchAlgorithm> {
     evaluator: E,
+    search: S,
     board: Board,
 }
 
-impl Engine<MaterialEvaluator> {
-    pub fn new() -> Self {
-        Self::with_evaluator(MaterialEvaluator)
-    }
-}
-
-impl<E: Evaluator> Engine<E> {
-    pub fn with_evaluator(evaluator: E) -> Self {
+impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
+    pub fn with_components(evaluator: E, search: S) -> Self {
         Self {
             evaluator,
+            search,
             board: Board::new(),
         }
     }
@@ -46,8 +43,12 @@ impl<E: Evaluator> Engine<E> {
     }
 
     pub fn search_depth(&mut self, _depth: u32) -> String {
-        let _ = _depth;
-        "0000".to_string()
+        let SearchResult { best_move, .. } =
+            self.search.search(&mut self.board, &self.evaluator, _depth);
+        match best_move.and_then(crate::engine::types::uci_from_move) {
+            Some(uci) => uci,
+            None => "0000".to_string(),
+        }
     }
 
     pub fn game_status(&mut self) -> GameStatus {
