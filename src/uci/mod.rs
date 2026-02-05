@@ -1,3 +1,4 @@
+use crate::engine::eval::Evaluator;
 use crate::engine::Engine;
 use std::io::{self, Write};
 
@@ -5,7 +6,7 @@ mod commands;
 
 pub use commands::{Command, GoCommand, PositionCommand};
 
-pub fn run_loop(engine: &mut Engine) {
+pub fn run_loop<E: Evaluator>(engine: &mut Engine<E>) {
     let stdin = io::stdin();
 
     loop {
