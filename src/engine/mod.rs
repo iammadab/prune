@@ -8,21 +8,15 @@ pub mod search;
 pub mod types;
 
 use board::Board;
-use eval::{Evaluator, MaterialEvaluator};
+use eval::Evaluator;
 use movegen::game_status;
-use search::{MinimaxSearch, SearchAlgorithm, SearchResult};
+use search::{SearchAlgorithm, SearchResult};
 use types::GameStatus;
 
-pub struct Engine<E: Evaluator = MaterialEvaluator, S: SearchAlgorithm = MinimaxSearch> {
+pub struct Engine<E: Evaluator, S: SearchAlgorithm> {
     evaluator: E,
     search: S,
     board: Board,
-}
-
-impl Engine<MaterialEvaluator, MinimaxSearch> {
-    pub fn new() -> Self {
-        Self::with_components(MaterialEvaluator, MinimaxSearch)
-    }
 }
 
 impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
