@@ -1,17 +1,7 @@
 use crate::engine::board::Board;
 use crate::engine::eval::Evaluator;
-use crate::engine::types::Move;
-
-pub struct SearchResult {
-    pub best_move: Option<Move>,
-    pub score: i32,
-    pub nodes: u64,
-}
-
-pub trait SearchAlgorithm {
-    fn search(&mut self, board: &mut Board, evaluator: &impl Evaluator, depth: u32)
-        -> SearchResult;
-}
+use crate::engine::movegen::generate_legal;
+use crate::engine::search::traits::{SearchAlgorithm, SearchResult};
 
 pub struct MinimaxSearch;
 
@@ -26,7 +16,7 @@ impl SearchAlgorithm for MinimaxSearch {
         let mut best_move = None;
         let mut best_score = i32::MIN;
 
-        let moves = crate::engine::movegen::generate_legal(board);
+        let moves = generate_legal(board);
         if moves.is_empty() {
             return SearchResult {
                 best_move: None,
@@ -62,7 +52,7 @@ fn minimax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mu
         return evaluator.evaluate(board);
     }
 
-    let moves = crate::engine::movegen::generate_legal(board);
+    let moves = generate_legal(board);
     if moves.is_empty() {
         *nodes += 1;
         return evaluator.evaluate(board);
