@@ -46,6 +46,11 @@ impl SearchAlgorithm for MinimaxSearch {
     }
 }
 
+// Negamax explainer:
+// Our evaluator always scores the position from the side-to-move’s perspective.
+// When we make a move, the side to move flips, so a good score for them is a bad
+// score for us. That’s why we negate the child score: it “re-centers” the value
+// to the current player. This collapses max/min into a single loop.
 fn negamax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mut u64) -> i32 {
     if depth == 0 {
         *nodes += 1;
