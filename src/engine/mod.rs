@@ -7,16 +7,25 @@ pub mod movegen;
 pub mod types;
 
 use board::Board;
+use eval::{Evaluator, MaterialEvaluator};
 use movegen::game_status;
 use types::GameStatus;
 
-pub struct Engine {
+pub struct Engine<E: Evaluator = MaterialEvaluator> {
+    evaluator: E,
     board: Board,
 }
 
-impl Engine {
+impl Engine<MaterialEvaluator> {
     pub fn new() -> Self {
+        Self::with_evaluator(MaterialEvaluator)
+    }
+}
+
+impl<E: Evaluator> Engine<E> {
+    pub fn with_evaluator(evaluator: E) -> Self {
         Self {
+            evaluator,
             board: Board::new(),
         }
     }
