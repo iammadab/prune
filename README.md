@@ -20,5 +20,14 @@ Then run the UCI loop with the engine you want to use:
 use chess_engine::uci;
 
 let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
-uci::run_loop(&mut engine);
+uci::run_loop(&mut engine, 6);
 ```
+
+The binary supports optional CLI flags:
+
+```sh
+cargo run -- --depth 8 --seed 12345
+```
+
+- `--depth` sets the default search depth when `go depth` is not provided.
+- `--seed` sets the RNG seed so best-move sampling is deterministic; omit for nondeterministic sampling.

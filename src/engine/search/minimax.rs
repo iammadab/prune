@@ -13,13 +13,13 @@ impl SearchAlgorithm for MinimaxSearch {
         depth: u32,
     ) -> SearchResult {
         let mut nodes = 0;
-        let mut best_move = None;
+        let mut best_moves = Vec::new();
         let mut best_score = i32::MIN;
 
         let moves = generate_legal(board);
         if moves.is_empty() {
             return SearchResult {
-                best_move: None,
+                best_moves: Vec::new(),
                 score: evaluator.evaluate(board),
                 nodes,
             };
@@ -34,12 +34,15 @@ impl SearchAlgorithm for MinimaxSearch {
             board.unmake_move(mv, undo);
             if score > best_score {
                 best_score = score;
-                best_move = Some(mv);
+                best_moves.clear();
+                best_moves.push(mv);
+            } else if score == best_score {
+                best_moves.push(mv);
             }
         }
 
         SearchResult {
-            best_move,
+            best_moves,
             score: best_score,
             nodes,
         }
