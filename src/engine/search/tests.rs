@@ -67,3 +67,21 @@ fn seeded_search_depth_is_deterministic() {
 
     assert_eq!(move_a, move_b);
 }
+
+#[test]
+fn alphabeta_depth3_includes_ba6() {
+    let mut board = Board::new();
+    board
+        .set_fen("rnbqkbnr/pppp1ppp/8/4p3/8/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
+        .expect("fen");
+
+    let mut search = AlphaBetaSearch;
+    let result = search.search(&mut board, &MaterialEvaluator, 3);
+    let best_moves: Vec<String> = result
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    assert!(!best_moves.iter().any(|mv| mv == "f1a6"));
+}
