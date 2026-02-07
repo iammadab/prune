@@ -10,6 +10,8 @@ pub mod types;
 use board::Board;
 use eval::Evaluator;
 use movegen::game_status;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 use search::{SearchAlgorithm, SearchResult};
 use types::GameStatus;
 
@@ -17,6 +19,7 @@ pub struct Engine<E: Evaluator, S: SearchAlgorithm> {
     evaluator: E,
     search: S,
     board: Board,
+    rng: Option<SmallRng>,
 }
 
 impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
@@ -25,7 +28,12 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
             evaluator,
             search,
             board: Board::new(),
+            rng: None,
         }
+    }
+
+    pub fn set_rng_seed(&mut self, seed: u64) {
+        self.rng = Some(SmallRng::seed_from_u64(seed));
     }
 
     pub fn set_position_startpos(&mut self) {
@@ -43,12 +51,20 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
     }
 
     pub fn search_depth(&mut self, _depth: u32) -> String {
-        let SearchResult { best_move, .. } =
+        let SearchResult { best_moves, .. } =
             self.search.search(&mut self.board, &self.evaluator, _depth);
-        match best_move.and_then(crate::engine::types::uci_from_move) {
-            Some(uci) => uci,
-            None => "0000".to_string(),
-        }
+        let mv = if best_moves.is_empty() {
+            None
+        } else if let Some(rng) = &mut self.rng {
+            let index = rng.gen_range(0..best_moves.len());
+            Some(best_moves[index])
+        } else {
+            let mut rng = rand::thread_rng();
+            let index = rng.gen_range(0..best_moves.len());
+            Some(best_moves[index])
+        };
+        mv.and_then(crate::engine::types::uci_from_move)
+            .unwrap_or_else(|| "0000".to_string())
     }
 
     pub fn game_status(&mut self) -> GameStatus {
