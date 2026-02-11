@@ -85,3 +85,30 @@ fn alphabeta_depth3_includes_ba6() {
 
     assert!(!best_moves.iter().any(|mv| mv == "f1a6"));
 }
+
+#[test]
+fn alphabeta_best_moves_subset_of_minimax_depth2_startpos() {
+    let mut board = Board::new();
+    board.set_startpos();
+
+    let mut minimax = MinimaxSearch;
+    let mut alphabeta = AlphaBetaSearch;
+
+    let mini_best: Vec<String> = minimax
+        .search(&mut board, &MaterialEvaluator, 2)
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    let alpha_best: Vec<String> = alphabeta
+        .search(&mut board, &MaterialEvaluator, 2)
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    for mv in alpha_best {
+        assert!(mini_best.iter().any(|best| best == &mv));
+    }
+}

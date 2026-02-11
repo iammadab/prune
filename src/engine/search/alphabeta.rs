@@ -27,29 +27,59 @@ impl SearchAlgorithm for AlphaBetaSearch {
             };
         }
 
+        let mut first_move = true;
         for mv in moves {
             let undo = match board.make_move(mv) {
                 Ok(undo) => undo,
                 Err(_) => continue,
             };
-            let score = -alphabeta(
-                board,
-                evaluator,
-                depth.saturating_sub(1),
-                -beta,
-                -alpha,
-                &mut nodes,
-            );
-            board.unmake_move(mv, undo);
-            if score > best_score {
-                best_score = score;
-                best_moves.clear();
-                best_moves.push(mv);
-            } else if score == best_score {
-                best_moves.push(mv);
+            let mut exact = false;
+            let mut score = i32::MIN;
+            if first_move {
+                score = -alphabeta(
+                    board,
+                    evaluator,
+                    depth.saturating_sub(1),
+                    -beta,
+                    -alpha,
+                    &mut nodes,
+                );
+                exact = true;
+                first_move = false;
+            } else {
+                let null_beta = alpha.saturating_add(1);
+                score = -alphabeta(
+                    board,
+                    evaluator,
+                    depth.saturating_sub(1),
+                    -null_beta,
+                    -alpha,
+                    &mut nodes,
+                );
+                if score > alpha {
+                    score = -alphabeta(
+                        board,
+                        evaluator,
+                        depth.saturating_sub(1),
+                        -beta,
+                        -alpha,
+                        &mut nodes,
+                    );
+                    exact = true;
+                }
             }
-            if score > alpha {
-                alpha = score;
+            board.unmake_move(mv, undo);
+            if exact {
+                if score > best_score {
+                    best_score = score;
+                    best_moves.clear();
+                    best_moves.push(mv);
+                } else if score == best_score {
+                    best_moves.push(mv);
+                }
+                if score > alpha {
+                    alpha = score;
+                }
             }
         }
 
