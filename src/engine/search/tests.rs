@@ -67,3 +67,48 @@ fn seeded_search_depth_is_deterministic() {
 
     assert_eq!(move_a, move_b);
 }
+
+#[test]
+fn alphabeta_depth3_includes_ba6() {
+    let mut board = Board::new();
+    board
+        .set_fen("rnbqkbnr/pppp1ppp/8/4p3/8/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
+        .expect("fen");
+
+    let mut search = AlphaBetaSearch;
+    let result = search.search(&mut board, &MaterialEvaluator, 3);
+    let best_moves: Vec<String> = result
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    assert!(!best_moves.iter().any(|mv| mv == "f1a6"));
+}
+
+#[test]
+fn alphabeta_best_moves_subset_of_minimax_depth2_startpos() {
+    let mut board = Board::new();
+    board.set_startpos();
+
+    let mut minimax = MinimaxSearch;
+    let mut alphabeta = AlphaBetaSearch;
+
+    let mini_best: Vec<String> = minimax
+        .search(&mut board, &MaterialEvaluator, 2)
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    let alpha_best: Vec<String> = alphabeta
+        .search(&mut board, &MaterialEvaluator, 2)
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    for mv in alpha_best {
+        assert!(mini_best.iter().any(|best| best == &mv));
+    }
+}
