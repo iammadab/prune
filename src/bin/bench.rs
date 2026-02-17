@@ -1,3 +1,6 @@
+use chess_engine::engine::eval::MaterialEvaluator;
+use chess_engine::engine::search::{AlphaBetaSearch, MinimaxSearch};
+use chess_engine::engine::Engine;
 use std::fs;
 
 #[derive(Debug, Clone)]
@@ -21,14 +24,104 @@ fn main() {
         args
     };
 
-    let mut total = 0usize;
+    let mut puzzles = Vec::new();
     for path in puzzle_paths {
-        let puzzles = parse_puzzles_from_file(&path).unwrap_or_else(|err| panic!("{path}: {err}"));
-        println!("{path}: {} puzzles", puzzles.len());
-        total += puzzles.len();
+        let mut file_puzzles =
+            parse_puzzles_from_file(&path).unwrap_or_else(|err| panic!("{path}: {err}"));
+        println!("{path}: {} puzzles", file_puzzles.len());
+        puzzles.append(&mut file_puzzles);
     }
 
-    println!("total puzzles: {total}");
+    println!("total puzzles: {}", puzzles.len());
+
+    let depth = 6u32;
+
+    let mut alphabeta = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
+    let stats = run_engine_on_puzzles("alphabeta", &mut alphabeta, &puzzles, depth);
+    println!(
+        "{}: solved {}/{} ({:.2}%)",
+        stats.name,
+        stats.solved,
+        stats.total,
+        stats.solve_rate()
+    );
+
+    let mut minimax = Engine::with_components(MaterialEvaluator, MinimaxSearch);
+    let stats = run_engine_on_puzzles("minimax", &mut minimax, &puzzles, depth);
+    println!(
+        "{}: solved {}/{} ({:.2}%)",
+        stats.name,
+        stats.solved,
+        stats.total,
+        stats.solve_rate()
+    );
+}
+
+struct BenchStats {
+    name: &'static str,
+    solved: usize,
+    total: usize,
+}
+
+impl BenchStats {
+    fn solve_rate(&self) -> f64 {
+        if self.total == 0 {
+            0.0
+        } else {
+            (self.solved as f64) * 100.0 / (self.total as f64)
+        }
+    }
+}
+
+fn run_engine_on_puzzles<E, S>(
+    name: &'static str,
+    engine: &mut Engine<E, S>,
+    puzzles: &[Puzzle],
+    depth: u32,
+) -> BenchStats
+where
+    E: chess_engine::engine::eval::Evaluator,
+    S: chess_engine::engine::search::SearchAlgorithm,
+{
+    let mut solved = 0usize;
+    let total = puzzles.len();
+
+    for puzzle in puzzles {
+        if puzzle.moves.is_empty() {
+            continue;
+        }
+
+        if let Err(err) = engine.set_position_fen(&puzzle.fen) {
+            eprintln!("{name}: invalid FEN {}: {err}", puzzle.id);
+            continue;
+        }
+
+        let mut solved_puzzle = true;
+        engine.apply_move_list(&[puzzle.moves[0].clone()]);
+
+        for (idx, expected) in puzzle.moves.iter().enumerate().skip(1) {
+            let engine_turn = idx % 2 == 1;
+            if engine_turn {
+                let best = engine.search_depth(depth);
+                if best != *expected {
+                    solved_puzzle = false;
+                    break;
+                }
+            }
+
+            engine.apply_move_list(&[expected.to_string()]);
+        }
+
+        if solved_puzzle {
+            solved += 1;
+        }
+    }
+
+    BenchStats {
+        name,
+        solved,
+        total,
+    }
 }
 
 fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
