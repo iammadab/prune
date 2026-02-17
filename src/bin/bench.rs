@@ -69,7 +69,7 @@ fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
 
 fn parse_puzzle_row(line: &str, header: HeaderMap) -> Result<Puzzle, String> {
     let normalized = line.trim_end_matches('\r');
-    let fields = parse_csv_line(normalized)?;
+    let fields = parse_first_three_fields(normalized)?;
 
     let id = fields
         .get(header.id_idx)
@@ -95,40 +95,13 @@ fn parse_puzzle_row(line: &str, header: HeaderMap) -> Result<Puzzle, String> {
     Ok(Puzzle { id, fen, moves })
 }
 
-fn parse_csv_line(line: &str) -> Result<Vec<String>, String> {
-    let mut fields = Vec::new();
-    let mut current = String::new();
-    let mut chars = line.chars().peekable();
-    let mut in_quotes = false;
-
-    while let Some(ch) = chars.next() {
-        match ch {
-            '"' => {
-                if in_quotes {
-                    if matches!(chars.peek(), Some('"')) {
-                        chars.next();
-                        current.push('"');
-                    } else {
-                        in_quotes = false;
-                    }
-                } else {
-                    in_quotes = true;
-                }
-            }
-            ',' if !in_quotes => {
-                fields.push(current);
-                current = String::new();
-            }
-            _ => current.push(ch),
-        }
+fn parse_first_three_fields(line: &str) -> Result<Vec<String>, String> {
+    let parts: Vec<&str> = line.splitn(4, ',').collect();
+    if parts.len() < 3 {
+        return Err("expected at least 3 CSV fields".to_string());
     }
 
-    if in_quotes {
-        return Err("unterminated quoted field".to_string());
-    }
-
-    fields.push(current);
-    Ok(fields)
+    Ok(parts[..3].iter().map(|part| (*part).to_string()).collect())
 }
 
 #[cfg(test)]
