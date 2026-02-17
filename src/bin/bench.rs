@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 
 #[derive(Debug, Clone)]
@@ -14,6 +13,12 @@ struct HeaderMap {
     fen_idx: usize,
     moves_idx: usize,
 }
+
+const HEADER_MAP: HeaderMap = HeaderMap {
+    id_idx: 0,
+    fen_idx: 1,
+    moves_idx: 2,
+};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -43,17 +48,16 @@ fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
     let contents =
         fs::read_to_string(path).map_err(|err| format!("failed to read {}: {err}", path))?;
     let mut lines = contents.lines();
-    let header_line = lines
+    let _ = lines
         .next()
         .ok_or_else(|| "missing header row".to_string())?;
-    let header = parse_header_map(header_line)?;
 
     let mut puzzles = Vec::new();
     for (line_number, line) in lines.enumerate() {
         if line.trim().is_empty() {
             continue;
         }
-        let puzzle = parse_puzzle_row(line, header).map_err(|err| {
+        let puzzle = parse_puzzle_row(line, HEADER_MAP).map_err(|err| {
             let display_line = line_number + 2;
             format!("line {display_line}: {err}")
         })?;
@@ -61,30 +65,6 @@ fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
     }
 
     Ok(puzzles)
-}
-
-fn parse_header_map(line: &str) -> Result<HeaderMap, String> {
-    let headers = parse_csv_line(line)?;
-    let mut map = HashMap::new();
-    for (idx, header) in headers.iter().enumerate() {
-        map.insert(header.as_str(), idx);
-    }
-
-    let id_idx = *map
-        .get("PuzzleId")
-        .ok_or_else(|| "missing PuzzleId column".to_string())?;
-    let fen_idx = *map
-        .get("FEN")
-        .ok_or_else(|| "missing FEN column".to_string())?;
-    let moves_idx = *map
-        .get("Moves")
-        .ok_or_else(|| "missing Moves column".to_string())?;
-
-    Ok(HeaderMap {
-        id_idx,
-        fen_idx,
-        moves_idx,
-    })
 }
 
 fn parse_puzzle_row(line: &str, header: HeaderMap) -> Result<Puzzle, String> {
@@ -157,12 +137,9 @@ mod tests {
 
     #[test]
     fn parses_sample_puzzle_row() {
-        let header =
-            "PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays,Themes,GameUrl,OpeningTags";
-        let header_map = parse_header_map(header).expect("header parse");
         let line = "000rZ,2kr1b1r/p1p2pp1/2pqb3/7p/3N2n1/2NPB3/PPP2PPP/R2Q1RK1 w - - 2 13,d4e6 d6h2,822,85,100,420,kingsideAttack mate mateIn1 oneMove opening,https://lichess.org/seIMDWkD#25,Scandinavian_Defense Scandinavian_Defense_Modern_Variation";
 
-        let puzzle = parse_puzzle_row(line, header_map).expect("row parse");
+        let puzzle = parse_puzzle_row(line, HEADER_MAP).expect("row parse");
 
         assert_eq!(puzzle.id, "000rZ");
         assert_eq!(
