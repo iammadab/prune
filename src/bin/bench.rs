@@ -7,19 +7,6 @@ struct Puzzle {
     moves: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct HeaderMap {
-    id_idx: usize,
-    fen_idx: usize,
-    moves_idx: usize,
-}
-
-const HEADER_MAP: HeaderMap = HeaderMap {
-    id_idx: 0,
-    fen_idx: 1,
-    moves_idx: 2,
-};
-
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let puzzle_paths = if args.is_empty() {
@@ -57,7 +44,7 @@ fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
         if line.trim().is_empty() {
             continue;
         }
-        let puzzle = parse_puzzle_row(line, HEADER_MAP).map_err(|err| {
+        let puzzle = parse_puzzle_row(line).map_err(|err| {
             let display_line = line_number + 2;
             format!("line {display_line}: {err}")
         })?;
@@ -67,21 +54,13 @@ fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
     Ok(puzzles)
 }
 
-fn parse_puzzle_row(line: &str, header: HeaderMap) -> Result<Puzzle, String> {
+fn parse_puzzle_row(line: &str) -> Result<Puzzle, String> {
     let normalized = line.trim_end_matches('\r');
     let fields = parse_first_three_fields(normalized)?;
 
-    let id = fields
-        .get(header.id_idx)
-        .ok_or_else(|| "missing PuzzleId value".to_string())?
-        .to_string();
-    let fen = fields
-        .get(header.fen_idx)
-        .ok_or_else(|| "missing FEN value".to_string())?
-        .to_string();
-    let moves_field = fields
-        .get(header.moves_idx)
-        .ok_or_else(|| "missing Moves value".to_string())?;
+    let id = fields[0].to_string();
+    let fen = fields[1].to_string();
+    let moves_field = fields[2].as_str();
 
     let moves: Vec<String> = moves_field
         .split_whitespace()
@@ -112,7 +91,7 @@ mod tests {
     fn parses_sample_puzzle_row() {
         let line = "000rZ,2kr1b1r/p1p2pp1/2pqb3/7p/3N2n1/2NPB3/PPP2PPP/R2Q1RK1 w - - 2 13,d4e6 d6h2,822,85,100,420,kingsideAttack mate mateIn1 oneMove opening,https://lichess.org/seIMDWkD#25,Scandinavian_Defense Scandinavian_Defense_Modern_Variation";
 
-        let puzzle = parse_puzzle_row(line, HEADER_MAP).expect("row parse");
+        let puzzle = parse_puzzle_row(line).expect("row parse");
 
         assert_eq!(puzzle.id, "000rZ");
         assert_eq!(
