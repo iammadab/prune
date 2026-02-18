@@ -1,5 +1,6 @@
 pub mod alphabeta;
 pub mod minimax;
+pub mod quiescence;
 pub mod traits;
 
 pub use alphabeta::AlphaBetaSearch;
