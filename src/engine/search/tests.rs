@@ -112,3 +112,22 @@ fn alphabeta_best_moves_subset_of_minimax_depth2_startpos() {
         assert!(mini_best.iter().any(|best| best == &mv));
     }
 }
+
+#[test]
+fn prefers_mate_over_material_capture() {
+    let mut board = Board::new();
+    board
+        .set_fen("1k6/8/8/8/7Q/8/PPP5/1K1Bq3 b - - 0 1")
+        .expect("fen");
+
+    let mut search = MinimaxSearch;
+    let result = search.search(&mut board, &MaterialEvaluator, 1);
+    let best_moves: Vec<String> = result
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    assert!(best_moves.iter().any(|mv| mv == "e1d1"));
+    assert!(!best_moves.iter().any(|mv| mv == "e1h4"));
+}
