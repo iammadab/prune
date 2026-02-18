@@ -359,7 +359,7 @@ fn generate_castling_for_color(board: &Board, color: Color, rank: u8, moves: &mu
     }
 }
 
-fn is_king_in_check(board: &Board, color: Color) -> bool {
+pub(crate) fn is_king_in_check(board: &Board, color: Color) -> bool {
     let king_square = match find_king(board, color) {
         Some(square) => square,
         None => return false,

@@ -1,7 +1,9 @@
 use crate::engine::board::Board;
 use crate::engine::eval::Evaluator;
-use crate::engine::movegen::generate_legal;
+use crate::engine::movegen::{generate_legal, is_king_in_check};
 use crate::engine::search::traits::{SearchAlgorithm, SearchResult};
+
+const MATE_SCORE: i32 = 30_000;
 
 pub struct MinimaxSearch;
 
@@ -56,12 +58,15 @@ impl SearchAlgorithm for MinimaxSearch {
 // to the current player. This collapses max/min into a single loop.
 fn negamax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mut u64) -> i32 {
     *nodes += 1;
-    if depth == 0 {
-        return evaluator.evaluate(board);
-    }
-
     let moves = generate_legal(board);
     if moves.is_empty() {
+        if is_king_in_check(board, board.side_to_move) {
+            return -MATE_SCORE - depth as i32;
+        }
+        return 0;
+    }
+
+    if depth == 0 {
         return evaluator.evaluate(board);
     }
 
