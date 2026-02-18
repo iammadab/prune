@@ -11,8 +11,8 @@ struct Puzzle {
 }
 
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let puzzle_paths = if args.is_empty() {
+    let (depth, puzzle_paths) = parse_args();
+    let puzzle_paths = if puzzle_paths.is_empty() {
         vec![
             "bench/puzzles/mateIn1.csv".to_string(),
             "bench/puzzles/mateIn2.csv".to_string(),
@@ -21,7 +21,7 @@ fn main() {
             "bench/puzzles/mateIn5.csv".to_string(),
         ]
     } else {
-        args
+        puzzle_paths
     };
 
     let mut puzzles = Vec::new();
@@ -33,8 +33,6 @@ fn main() {
     }
 
     println!("total puzzles: {}", puzzles.len());
-
-    let depth = 6u32;
 
     let mut alphabeta = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
     let stats = run_engine_on_puzzles("alphabeta", &mut alphabeta, &puzzles, depth);
@@ -55,6 +53,27 @@ fn main() {
         stats.total,
         stats.solve_rate()
     );
+}
+
+fn parse_args() -> (u32, Vec<String>) {
+    let mut depth = 6u32;
+    let mut puzzle_paths = Vec::new();
+    let mut args = std::env::args().skip(1);
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--depth" => match args.next() {
+                Some(value) => match value.parse::<u32>() {
+                    Ok(parsed) => depth = parsed,
+                    Err(_) => eprintln!("invalid --depth: {value}"),
+                },
+                None => eprintln!("missing value for --depth"),
+            },
+            _ => puzzle_paths.push(arg),
+        }
+    }
+
+    (depth, puzzle_paths)
 }
 
 struct BenchStats {
