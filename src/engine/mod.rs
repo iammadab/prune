@@ -51,8 +51,14 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
     }
 
     pub fn search_depth(&mut self, _depth: u32) -> String {
-        let SearchResult { best_moves, .. } =
-            self.search.search(&mut self.board, &self.evaluator, _depth);
+        let (best_move, _) = self.search_depth_with_stats(_depth);
+        best_move
+    }
+
+    pub fn search_depth_with_stats(&mut self, _depth: u32) -> (String, u64) {
+        let SearchResult {
+            best_moves, nodes, ..
+        } = self.search.search(&mut self.board, &self.evaluator, _depth);
         let mv = if best_moves.is_empty() {
             None
         } else if let Some(rng) = &mut self.rng {
@@ -63,8 +69,11 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
             let index = rng.gen_range(0..best_moves.len());
             Some(best_moves[index])
         };
-        mv.and_then(crate::engine::types::uci_from_move)
-            .unwrap_or_else(|| "0000".to_string())
+        (
+            mv.and_then(crate::engine::types::uci_from_move)
+                .unwrap_or_else(|| "0000".to_string()),
+            nodes,
+        )
     }
 
     pub fn game_status(&mut self) -> GameStatus {
