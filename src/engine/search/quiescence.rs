@@ -3,7 +3,6 @@ use crate::engine::eval::Evaluator;
 use crate::engine::movegen::{generate_legal, is_noisy_move};
 use crate::engine::types::Move;
 
-#[allow(dead_code)]
 pub(crate) fn quiesce_ab(
     board: &mut Board,
     evaluator: &impl Evaluator,
@@ -15,7 +14,6 @@ pub(crate) fn quiesce_ab(
     quiesce_core(board, evaluator, alpha, beta, nodes, q_depth)
 }
 
-#[allow(dead_code)]
 pub(crate) fn quiesce_mm(
     board: &mut Board,
     evaluator: &impl Evaluator,
@@ -26,7 +24,6 @@ pub(crate) fn quiesce_mm(
     quiesce_core(board, evaluator, i32::MIN / 2, i32::MAX / 2, nodes, q_depth)
 }
 
-#[allow(dead_code)]
 pub(crate) fn quiesce_core(
     board: &mut Board,
     evaluator: &impl Evaluator,
