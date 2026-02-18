@@ -27,7 +27,6 @@ fn main() {
         let path = mate_to_path(mate);
         let mut file_puzzles =
             parse_puzzles_from_file(&path, mate).unwrap_or_else(|err| panic!("{path}: {err}"));
-        println!("{path}: {} puzzles", file_puzzles.len());
         total_puzzles += file_puzzles.len();
         puzzles_by_mate
             .entry(mate)
@@ -35,7 +34,7 @@ fn main() {
             .append(&mut file_puzzles);
     }
 
-    println!("total puzzles: {total_puzzles}");
+    let _ = total_puzzles;
 
     let mut alphabeta = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
     print_engine_stats("alphabeta", &mut alphabeta, &puzzles_by_mate, depth);
@@ -108,6 +107,10 @@ fn print_engine_stats<E, S>(
 
     println!();
     println!("engine: {name}");
+    println!(
+        "{:<6} {:>7} {:>7} {:>8} {:>9} {:>10} {:>10}",
+        "mate", "solved", "total", "rate", "time(s)", "nodes", "nps"
+    );
 
     for (mate, puzzles) in puzzles_by_mate.iter() {
         let start = Instant::now();
@@ -119,7 +122,7 @@ fn print_engine_stats<E, S>(
         total_nodes += stats.nodes;
         let nps = nodes_per_second(stats.nodes, elapsed);
         println!(
-            "mate {}: solved {}/{} ({:.2}%) in {:.2}s, nodes {}, nps {}",
+            "{:<6} {:>7} {:>7} {:>7.2}% {:>9.2} {:>10} {:>10}",
             mate,
             stats.solved,
             stats.total,
@@ -137,7 +140,8 @@ fn print_engine_stats<E, S>(
     };
     let total_nps = nodes_per_second(total_stats.nodes, total_elapsed);
     println!(
-        "total: solved {}/{} ({:.2}%) in {:.2}s, nodes {}, nps {}",
+        "{:<6} {:>7} {:>7} {:>7.2}% {:>9.2} {:>10} {:>10}",
+        "total",
         total_stats.solved,
         total_stats.total,
         total_stats.solve_rate(),
