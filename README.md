@@ -40,7 +40,7 @@ cargo run --bin bench
 ```
 
 Defaults:
-- `--depth` defaults to 6.
+- `--depth` defaults to 2.
 - If no `--mate` is provided, it runs mateIn1-5.
 
 Specify depth and mate counts:

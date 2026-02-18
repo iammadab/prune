@@ -45,7 +45,7 @@ fn main() {
 }
 
 fn parse_args() -> (u32, Vec<u8>) {
-    let mut depth = 6u32;
+    let mut depth = 2u32;
     let mut mate_counts = Vec::new();
     let mut args = std::env::args().skip(1);
 
