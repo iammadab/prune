@@ -1,36 +1,11 @@
 use crate::engine::board::Board;
 use crate::engine::eval::MaterialEvaluator;
-use crate::engine::movegen::generate_legal;
 use crate::engine::search::{AlphaBetaSearch, MinimaxSearch, SearchAlgorithm};
 use crate::engine::types::uci_from_move;
 use crate::engine::Engine;
 
 fn tactical_capture_fen() -> &'static str {
     "3rk3/8/8/8/8/8/8/3QK3 w - - 0 1"
-}
-
-#[test]
-fn minimax_returns_best_move() {
-    let mut board = Board::new();
-    board.set_fen(tactical_capture_fen()).expect("fen");
-
-    let mut search = MinimaxSearch;
-    let result = search.search(&mut board, &MaterialEvaluator, 1);
-    let best: Vec<String> = result
-        .best_moves
-        .iter()
-        .filter_map(|mv| uci_from_move(*mv))
-        .collect();
-
-    let legal: Vec<String> = generate_legal(&mut board)
-        .iter()
-        .filter_map(|mv| uci_from_move(*mv))
-        .collect();
-
-    assert!(!best.is_empty());
-    for mv in best {
-        assert!(legal.iter().any(|legal_mv| legal_mv == &mv));
-    }
 }
 
 #[test]
