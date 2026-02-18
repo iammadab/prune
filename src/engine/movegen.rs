@@ -666,9 +666,9 @@ mod tests {
     fn noisy_move_detects_check() {
         let mut board = Board::new();
         board
-            .set_fen("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1")
+            .set_fen("4k3/4p3/8/8/8/8/8/4R1K1 w - - 0 1")
             .expect("fen");
-        let mv = move_from_uci("e2e7").expect("move");
+        let mv = move_from_uci("e1e7").expect("move");
         assert!(is_noisy_move(&mut board, mv));
     }
 }
