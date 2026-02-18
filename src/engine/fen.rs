@@ -132,6 +132,13 @@ pub fn validate_fen_semantics(data: &FenData) -> Result<(), String> {
         return Err("both kings are in check".to_string());
     }
 
+    if white_in_check && data.side_to_move != Color::White {
+        return Err("white king in check but black to move".to_string());
+    }
+    if black_in_check && data.side_to_move != Color::Black {
+        return Err("black king in check but white to move".to_string());
+    }
+
     if let Some(ep) = data.en_passant {
         validate_en_passant(data, ep)?;
     }
@@ -379,5 +386,18 @@ mod tests {
             .set_fen("8/8/8/4p3/8/8/8/4K2k w - e6 0 1")
             .unwrap_err();
         assert!(err.contains("en passant"));
+    }
+
+    #[test]
+    fn allows_side_to_move_in_check() {
+        let data = parse_fen("4k3/8/8/8/8/8/4R3/4K3 b - - 0 1").expect("fen");
+        assert!(validate_fen_semantics(&data).is_ok());
+    }
+
+    #[test]
+    fn rejects_check_on_wrong_side() {
+        let data = parse_fen("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1").expect("fen");
+        let err = validate_fen_semantics(&data).expect_err("invalid check state");
+        assert!(err.contains("black king in check"));
     }
 }
