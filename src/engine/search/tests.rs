@@ -58,6 +58,7 @@ fn seeded_search_depth_is_deterministic() {
     assert_eq!(move_a, move_b);
 }
 
+#[cfg(feature = "qsearch")]
 #[test]
 fn minimax_avoids_losing_queen_in_quiescence() {
     let mut board = Board::new();
@@ -74,6 +75,7 @@ fn minimax_avoids_losing_queen_in_quiescence() {
     assert!(!best_moves.iter().any(|mv| mv == "d1d2"));
 }
 
+#[cfg(feature = "qsearch")]
 #[test]
 fn alphabeta_avoids_losing_queen_in_quiescence() {
     let mut board = Board::new();

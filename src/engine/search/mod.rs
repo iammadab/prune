@@ -1,5 +1,6 @@
 pub mod alphabeta;
 pub mod minimax;
+#[cfg(feature = "qsearch")]
 pub mod quiescence;
 pub mod traits;
 

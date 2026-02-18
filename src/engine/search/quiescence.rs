@@ -1,7 +1,7 @@
 use crate::engine::board::Board;
 use crate::engine::eval::Evaluator;
-use crate::engine::movegen::{generate_legal, is_noisy_move};
-use crate::engine::types::Move;
+use crate::engine::movegen::{generate_pseudo_legal, is_king_in_check};
+use crate::engine::types::{Color, Move, PieceKind};
 
 pub(crate) fn quiesce_ab(
     board: &mut Board,
@@ -70,13 +70,46 @@ pub(crate) fn quiesce_core(
     alpha
 }
 
+// Collects tactical moves for quiescence (captures/promotions only), filtering out illegal moves.
 fn noisy_moves(board: &mut Board) -> Vec<Move> {
-    let moves = generate_legal(board);
-    let mut noisy = Vec::new();
+    let moves = generate_pseudo_legal(board);
+    let mut noisy = Vec::with_capacity(moves.len());
+    let side = board.side_to_move;
+
     for mv in moves {
-        if is_noisy_move(board, mv) {
-            noisy.push(mv);
+        let is_promotion = mv.promotion.is_some();
+        let is_capture = match board.squares[mv.to.index() as usize] {
+            Some(piece) => piece.color != side,
+            None => {
+                let is_pawn = matches!(
+                    board.squares[mv.from.index() as usize],
+                    Some(piece) if piece.color == side && piece.kind == PieceKind::Pawn
+                );
+                is_pawn && board.en_passant == Some(mv.to)
+            }
+        };
+
+        if !is_promotion && !is_capture {
+            continue;
         }
+
+        let undo = match board.make_move(mv) {
+            Ok(undo) => undo,
+            Err(_) => continue,
+        };
+        let mover = match board.side_to_move {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        };
+        let illegal = is_king_in_check(board, mover);
+        board.unmake_move(mv, undo);
+
+        if illegal {
+            continue;
+        }
+
+        noisy.push(mv);
     }
+
     noisy
 }
