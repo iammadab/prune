@@ -1,7 +1,9 @@
 use crate::engine::board::Board;
 use crate::engine::eval::Evaluator;
-use crate::engine::movegen::generate_legal;
+use crate::engine::movegen::{generate_legal, is_king_in_check};
 use crate::engine::search::traits::{SearchAlgorithm, SearchResult};
+
+const MATE_SCORE: i32 = 30_000;
 
 pub struct AlphaBetaSearch;
 
@@ -106,7 +108,11 @@ fn alphabeta(
 
     let moves = generate_legal(board);
     if moves.is_empty() {
-        return evaluator.evaluate(board);
+        if is_king_in_check(board, board.side_to_move) {
+            // Subtract depth so faster mates score higher and slower losses are preferred.
+            return -MATE_SCORE - depth as i32;
+        }
+        return 0;
     }
 
     let mut best = i32::MIN;
