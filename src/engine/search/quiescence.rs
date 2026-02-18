@@ -22,6 +22,7 @@ pub(crate) fn quiesce_mm(
     nodes: &mut u64,
     q_depth: u32,
 ) -> i32 {
+    // Use wide bounds that still allow safe negation.
     quiesce_core(board, evaluator, i32::MIN / 2, i32::MAX / 2, nodes, q_depth)
 }
 
