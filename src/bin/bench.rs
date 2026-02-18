@@ -21,21 +21,15 @@ fn main() {
         mate_counts
     };
     let mut puzzles_by_mate: BTreeMap<u8, Vec<Puzzle>> = BTreeMap::new();
-    let mut total_puzzles = 0usize;
-
     for mate in mate_counts {
         let path = mate_to_path(mate);
         let mut file_puzzles =
             parse_puzzles_from_file(&path, mate).unwrap_or_else(|err| panic!("{path}: {err}"));
-        println!("{path}: {} puzzles", file_puzzles.len());
-        total_puzzles += file_puzzles.len();
         puzzles_by_mate
             .entry(mate)
             .or_default()
             .append(&mut file_puzzles);
     }
-
-    println!("total puzzles: {total_puzzles}");
 
     let mut alphabeta = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
     print_engine_stats("alphabeta", &mut alphabeta, &puzzles_by_mate, depth);
@@ -79,6 +73,7 @@ fn mate_to_path(mate: u8) -> String {
 struct BenchStats {
     solved: usize,
     total: usize,
+    nodes: u64,
 }
 
 impl BenchStats {
@@ -103,9 +98,14 @@ fn print_engine_stats<E, S>(
     let mut total_solved = 0usize;
     let mut total_puzzles = 0usize;
     let mut total_elapsed = 0.0f64;
+    let mut total_nodes = 0u64;
 
     println!();
     println!("engine: {name}");
+    println!(
+        "{:<6} {:>7} {:>7} {:>8} {:>9} {:>10} {:>10}",
+        "mate", "solved", "total", "rate", "time(s)", "nodes", "nps"
+    );
 
     for (mate, puzzles) in puzzles_by_mate.iter() {
         let start = Instant::now();
@@ -114,26 +114,35 @@ fn print_engine_stats<E, S>(
         total_solved += stats.solved;
         total_puzzles += stats.total;
         total_elapsed += elapsed;
+        total_nodes += stats.nodes;
+        let nps = nodes_per_second(stats.nodes, elapsed);
         println!(
-            "mate {}: solved {}/{} ({:.2}%) in {:.2}s",
+            "{:<6} {:>7} {:>7} {:>7.2}% {:>9.2} {:>10} {:>10}",
             mate,
             stats.solved,
             stats.total,
             stats.solve_rate(),
-            elapsed
+            elapsed,
+            format_nodes(stats.nodes),
+            format_nps(nps)
         );
     }
 
     let total_stats = BenchStats {
         solved: total_solved,
         total: total_puzzles,
+        nodes: total_nodes,
     };
+    let total_nps = nodes_per_second(total_stats.nodes, total_elapsed);
     println!(
-        "total: solved {}/{} ({:.2}%) in {:.2}s",
+        "{:<6} {:>7} {:>7} {:>7.2}% {:>9.2} {:>10} {:>10}",
+        "total",
         total_stats.solved,
         total_stats.total,
         total_stats.solve_rate(),
-        total_elapsed
+        total_elapsed,
+        format_nodes(total_stats.nodes),
+        format_nps(total_nps)
     );
 }
 
@@ -148,6 +157,7 @@ where
     S: chess_engine::engine::search::SearchAlgorithm,
 {
     let mut solved = 0usize;
+    let mut nodes = 0u64;
     let total = puzzles.len();
 
     for puzzle in puzzles {
@@ -166,7 +176,8 @@ where
         for (idx, expected) in puzzle.moves.iter().enumerate().skip(1) {
             let engine_turn = idx % 2 == 1;
             if engine_turn {
-                let best = engine.search_depth(depth);
+                let (best, search_nodes) = engine.search_depth_with_stats(depth);
+                nodes = nodes.saturating_add(search_nodes);
                 if best != *expected {
                     solved_puzzle = false;
                     break;
@@ -181,7 +192,11 @@ where
         }
     }
 
-    BenchStats { solved, total }
+    BenchStats {
+        solved,
+        total,
+        nodes,
+    }
 }
 
 fn parse_puzzles_from_file(path: &str, mate: u8) -> Result<Vec<Puzzle>, String> {
@@ -230,6 +245,51 @@ fn parse_puzzle_row(line: &str, mate: u8) -> Result<Puzzle, String> {
         moves,
         mate,
     })
+}
+
+fn nodes_per_second(nodes: u64, elapsed: f64) -> f64 {
+    if elapsed <= 0.0 {
+        0.0
+    } else {
+        (nodes as f64) / elapsed
+    }
+}
+
+fn format_nodes(nodes: u64) -> String {
+    const KILO: f64 = 1_000.0;
+    const MEGA: f64 = 1_000_000.0;
+    const GIGA: f64 = 1_000_000_000.0;
+
+    if nodes < 10_000 {
+        return nodes.to_string();
+    }
+
+    let value = nodes as f64;
+    if value >= GIGA {
+        format!("{:.2}B", value / GIGA)
+    } else if value >= MEGA {
+        format!("{:.2}M", value / MEGA)
+    } else {
+        format!("{:.2}K", value / KILO)
+    }
+}
+
+fn format_nps(value: f64) -> String {
+    const KILO: f64 = 1_000.0;
+    const MEGA: f64 = 1_000_000.0;
+    const GIGA: f64 = 1_000_000_000.0;
+
+    if value < 10_000.0 {
+        return format!("{:.2}", value);
+    }
+
+    if value >= GIGA {
+        format!("{:.2}B", value / GIGA)
+    } else if value >= MEGA {
+        format!("{:.2}M", value / MEGA)
+    } else {
+        format!("{:.2}K", value / KILO)
+    }
 }
 
 fn parse_first_three_fields(line: &str) -> Result<Vec<String>, String> {

@@ -99,14 +99,13 @@ fn alphabeta(
     beta: i32,
     nodes: &mut u64,
 ) -> i32 {
+    *nodes += 1;
     if depth == 0 {
-        *nodes += 1;
         return evaluator.evaluate(board);
     }
 
     let moves = generate_legal(board);
     if moves.is_empty() {
-        *nodes += 1;
         return evaluator.evaluate(board);
     }
 
