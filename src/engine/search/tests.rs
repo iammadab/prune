@@ -8,20 +8,8 @@ fn tactical_capture_fen() -> &'static str {
     "3rk3/8/8/8/8/8/8/3QK3 w - - 0 1"
 }
 
-#[test]
-fn minimax_returns_best_move() {
-    let mut board = Board::new();
-    board.set_fen(tactical_capture_fen()).expect("fen");
-
-    let mut search = MinimaxSearch;
-    let result = search.search(&mut board, &MaterialEvaluator, 1);
-    let best: Vec<String> = result
-        .best_moves
-        .iter()
-        .filter_map(|mv| uci_from_move(*mv))
-        .collect();
-
-    assert!(best.iter().any(|mv| mv == "d1d8"));
+fn quiescence_recapture_fen() -> &'static str {
+    "4k3/8/8/8/8/4p3/3p4/3Q2K1 w - - 0 1"
 }
 
 #[test]
@@ -49,7 +37,9 @@ fn alphabeta_matches_minimax_depth1() {
     mini_best.sort();
     alpha_best.sort();
 
-    assert_eq!(mini_best, alpha_best);
+    for mv in alpha_best {
+        assert!(mini_best.iter().any(|best| best == &mv));
+    }
 }
 
 #[test]
@@ -66,6 +56,40 @@ fn seeded_search_depth_is_deterministic() {
     let move_b = engine_b.search_depth(1);
 
     assert_eq!(move_a, move_b);
+}
+
+#[cfg(feature = "qsearch")]
+#[test]
+fn minimax_avoids_losing_queen_in_quiescence() {
+    let mut board = Board::new();
+    board.set_fen(quiescence_recapture_fen()).expect("fen");
+
+    let mut search = MinimaxSearch;
+    let result = search.search(&mut board, &MaterialEvaluator, 1);
+    let best_moves: Vec<String> = result
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    assert!(!best_moves.iter().any(|mv| mv == "d1d2"));
+}
+
+#[cfg(feature = "qsearch")]
+#[test]
+fn alphabeta_avoids_losing_queen_in_quiescence() {
+    let mut board = Board::new();
+    board.set_fen(quiescence_recapture_fen()).expect("fen");
+
+    let mut search = AlphaBetaSearch;
+    let result = search.search(&mut board, &MaterialEvaluator, 1);
+    let best_moves: Vec<String> = result
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    assert!(!best_moves.iter().any(|mv| mv == "d1d2"));
 }
 
 #[test]

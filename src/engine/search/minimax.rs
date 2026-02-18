@@ -1,9 +1,12 @@
 use crate::engine::board::Board;
 use crate::engine::eval::Evaluator;
 use crate::engine::movegen::{generate_legal, is_king_in_check};
+#[cfg(feature = "qsearch")]
+use crate::engine::search::quiescence::quiesce_mm;
 use crate::engine::search::traits::{SearchAlgorithm, SearchResult};
 
 const MATE_SCORE: i32 = 30_000;
+const QUIESCE_DEPTH: u32 = 4;
 
 pub struct MinimaxSearch;
 
@@ -60,7 +63,14 @@ fn negamax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mu
     *nodes += 1;
     if depth == 0 {
         if !is_king_in_check(board, board.side_to_move) {
-            return evaluator.evaluate(board);
+            #[cfg(feature = "qsearch")]
+            {
+                return quiesce_mm(board, evaluator, nodes, QUIESCE_DEPTH);
+            }
+            #[cfg(not(feature = "qsearch"))]
+            {
+                return evaluator.evaluate(board);
+            }
         }
 
         let moves = generate_legal(board);
@@ -68,7 +78,14 @@ fn negamax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mu
             // Subtract depth so faster mates score higher and slower losses are preferred.
             return -MATE_SCORE - depth as i32;
         }
-        return evaluator.evaluate(board);
+        #[cfg(feature = "qsearch")]
+        {
+            return quiesce_mm(board, evaluator, nodes, QUIESCE_DEPTH);
+        }
+        #[cfg(not(feature = "qsearch"))]
+        {
+            return evaluator.evaluate(board);
+        }
     }
 
     let moves = generate_legal(board);

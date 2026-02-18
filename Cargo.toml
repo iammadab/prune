@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 rand = { version = "0.8", features = ["small_rng"] }
+
+[features]
+qsearch = []

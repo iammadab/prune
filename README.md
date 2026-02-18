@@ -50,3 +50,10 @@ cargo run --bin bench -- --depth 8
 cargo run --bin bench -- --depth 8 --mate 3
 cargo run --bin bench -- --mate 2 --mate 4
 ```
+
+Quiescence search is behind the `qsearch` feature:
+
+```sh
+cargo test --lib --features qsearch
+cargo run --bin bench --features qsearch -- --depth 2 --mate 1
+```

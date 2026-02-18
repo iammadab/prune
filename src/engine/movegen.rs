@@ -84,6 +84,33 @@ pub fn generate_legal(board: &mut Board) -> MoveList {
     legal
 }
 
+pub fn is_noisy_move(board: &mut Board, mv: Move) -> bool {
+    if mv.promotion.is_some() {
+        return true;
+    }
+
+    let from_piece = match board.squares[mv.from.index() as usize] {
+        Some(piece) => piece,
+        None => return false,
+    };
+
+    if let Some(target) = board.squares[mv.to.index() as usize] {
+        if target.color != from_piece.color {
+            return true;
+        }
+    } else if from_piece.kind == PieceKind::Pawn && board.en_passant == Some(mv.to) {
+        return true;
+    }
+
+    let undo = match board.make_move(mv) {
+        Ok(undo) => undo,
+        Err(_) => return false,
+    };
+    let gives_check = is_king_in_check(board, board.side_to_move);
+    board.unmake_move(mv, undo);
+    gives_check
+}
+
 pub fn perft(board: &mut Board, depth: u32) -> u64 {
     if depth == 0 {
         return 1;
@@ -489,7 +516,7 @@ fn opposite_color(color: Color) -> Color {
 mod tests {
     use super::*;
     use crate::engine::board::Board;
-    use crate::engine::types::{square_from_algebraic, uci_from_move, GameStatus};
+    use crate::engine::types::{move_from_uci, square_from_algebraic, uci_from_move, GameStatus};
 
     #[test]
     fn offset_square_rejects_offboard() {
@@ -613,5 +640,35 @@ mod tests {
         let mut board = Board::new();
         board.set_startpos();
         assert_eq!(game_status(&mut board), GameStatus::Ongoing);
+    }
+
+    #[test]
+    fn noisy_move_detects_capture() {
+        let mut board = Board::new();
+        board
+            .set_fen("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")
+            .expect("fen");
+        let mv = move_from_uci("e4d5").expect("move");
+        assert!(is_noisy_move(&mut board, mv));
+    }
+
+    #[test]
+    fn noisy_move_detects_promotion() {
+        let mut board = Board::new();
+        board
+            .set_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
+            .expect("fen");
+        let mv = move_from_uci("a7a8q").expect("move");
+        assert!(is_noisy_move(&mut board, mv));
+    }
+
+    #[test]
+    fn noisy_move_detects_check() {
+        let mut board = Board::new();
+        board
+            .set_fen("4k3/4p3/8/8/8/8/8/4R1K1 w - - 0 1")
+            .expect("fen");
+        let mv = move_from_uci("e1e7").expect("move");
+        assert!(is_noisy_move(&mut board, mv));
     }
 }
