@@ -55,14 +55,13 @@ impl SearchAlgorithm for MinimaxSearch {
 // score for us. That’s why we negate the child score: it “re-centers” the value
 // to the current player. This collapses max/min into a single loop.
 fn negamax(board: &mut Board, evaluator: &impl Evaluator, depth: u32, nodes: &mut u64) -> i32 {
+    *nodes += 1;
     if depth == 0 {
-        *nodes += 1;
         return evaluator.evaluate(board);
     }
 
     let moves = generate_legal(board);
     if moves.is_empty() {
-        *nodes += 1;
         return evaluator.evaluate(board);
     }
 
