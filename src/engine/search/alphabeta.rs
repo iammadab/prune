@@ -5,6 +5,7 @@ use crate::engine::search::quiescence::quiesce_ab;
 use crate::engine::search::traits::{SearchAlgorithm, SearchResult};
 
 const MATE_SCORE: i32 = 30_000;
+const QUIESCE_DEPTH: u32 = 4;
 
 pub struct AlphaBetaSearch;
 
@@ -105,7 +106,7 @@ fn alphabeta(
     *nodes += 1;
     if depth == 0 {
         if !is_king_in_check(board, board.side_to_move) {
-            return quiesce_ab(board, evaluator, alpha, beta, nodes, 4);
+            return quiesce_ab(board, evaluator, alpha, beta, nodes, QUIESCE_DEPTH);
         }
 
         let moves = generate_legal(board);
@@ -113,7 +114,7 @@ fn alphabeta(
             // Subtract depth so faster mates score higher and slower losses are preferred.
             return -MATE_SCORE - depth as i32;
         }
-        return quiesce_ab(board, evaluator, alpha, beta, nodes, 4);
+        return quiesce_ab(board, evaluator, alpha, beta, nodes, QUIESCE_DEPTH);
     }
 
     let moves = generate_legal(board);
