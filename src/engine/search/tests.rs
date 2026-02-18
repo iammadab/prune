@@ -128,6 +128,5 @@ fn prefers_mate_over_material_capture() {
         .filter_map(|mv| uci_from_move(*mv))
         .collect();
 
-    assert!(best_moves.iter().any(|mv| mv == "e1d1"));
-    assert!(!best_moves.iter().any(|mv| mv == "e1h4"));
+    assert_eq!(best_moves, vec!["e1d1".to_string()]);
 }
