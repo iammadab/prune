@@ -21,20 +21,15 @@ fn main() {
         mate_counts
     };
     let mut puzzles_by_mate: BTreeMap<u8, Vec<Puzzle>> = BTreeMap::new();
-    let mut total_puzzles = 0usize;
-
     for mate in mate_counts {
         let path = mate_to_path(mate);
         let mut file_puzzles =
             parse_puzzles_from_file(&path, mate).unwrap_or_else(|err| panic!("{path}: {err}"));
-        total_puzzles += file_puzzles.len();
         puzzles_by_mate
             .entry(mate)
             .or_default()
             .append(&mut file_puzzles);
     }
-
-    let _ = total_puzzles;
 
     let mut alphabeta = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
     print_engine_stats("alphabeta", &mut alphabeta, &puzzles_by_mate, depth);
