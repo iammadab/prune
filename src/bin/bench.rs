@@ -104,6 +104,7 @@ fn print_engine_stats<E, S>(
     let mut total_puzzles = 0usize;
     let mut total_elapsed = 0.0f64;
 
+    println!();
     println!("engine: {name}");
 
     for (mate, puzzles) in puzzles_by_mate.iter() {
