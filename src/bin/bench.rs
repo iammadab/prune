@@ -1,13 +1,16 @@
 use chess_engine::engine::eval::MaterialEvaluator;
 use chess_engine::engine::search::{AlphaBetaSearch, MinimaxSearch};
 use chess_engine::engine::Engine;
+use std::collections::BTreeMap;
 use std::fs;
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 struct Puzzle {
     id: String,
     fen: String,
     moves: Vec<String>,
+    mate: u8,
 }
 
 fn main() {
@@ -17,37 +20,28 @@ fn main() {
     } else {
         mate_counts
     };
-    let puzzle_paths: Vec<String> = mate_counts.iter().map(|mate| mate_to_path(*mate)).collect();
+    let mut puzzles_by_mate: BTreeMap<u8, Vec<Puzzle>> = BTreeMap::new();
+    let mut total_puzzles = 0usize;
 
-    let mut puzzles = Vec::new();
-    for path in puzzle_paths {
+    for mate in mate_counts {
+        let path = mate_to_path(mate);
         let mut file_puzzles =
-            parse_puzzles_from_file(&path).unwrap_or_else(|err| panic!("{path}: {err}"));
+            parse_puzzles_from_file(&path, mate).unwrap_or_else(|err| panic!("{path}: {err}"));
         println!("{path}: {} puzzles", file_puzzles.len());
-        puzzles.append(&mut file_puzzles);
+        total_puzzles += file_puzzles.len();
+        puzzles_by_mate
+            .entry(mate)
+            .or_default()
+            .append(&mut file_puzzles);
     }
 
-    println!("total puzzles: {}", puzzles.len());
+    println!("total puzzles: {total_puzzles}");
 
     let mut alphabeta = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
-    let stats = run_engine_on_puzzles("alphabeta", &mut alphabeta, &puzzles, depth);
-    println!(
-        "{}: solved {}/{} ({:.2}%)",
-        stats.name,
-        stats.solved,
-        stats.total,
-        stats.solve_rate()
-    );
+    print_engine_stats("alphabeta", &mut alphabeta, &puzzles_by_mate, depth);
 
     let mut minimax = Engine::with_components(MaterialEvaluator, MinimaxSearch);
-    let stats = run_engine_on_puzzles("minimax", &mut minimax, &puzzles, depth);
-    println!(
-        "{}: solved {}/{} ({:.2}%)",
-        stats.name,
-        stats.solved,
-        stats.total,
-        stats.solve_rate()
-    );
+    print_engine_stats("minimax", &mut minimax, &puzzles_by_mate, depth);
 }
 
 fn parse_args() -> (u32, Vec<u8>) {
@@ -83,7 +77,6 @@ fn mate_to_path(mate: u8) -> String {
 }
 
 struct BenchStats {
-    name: &'static str,
     solved: usize,
     total: usize,
 }
@@ -96,6 +89,51 @@ impl BenchStats {
             (self.solved as f64) * 100.0 / (self.total as f64)
         }
     }
+}
+
+fn print_engine_stats<E, S>(
+    name: &'static str,
+    engine: &mut Engine<E, S>,
+    puzzles_by_mate: &BTreeMap<u8, Vec<Puzzle>>,
+    depth: u32,
+) where
+    E: chess_engine::engine::eval::Evaluator,
+    S: chess_engine::engine::search::SearchAlgorithm,
+{
+    let mut total_solved = 0usize;
+    let mut total_puzzles = 0usize;
+    let mut total_elapsed = 0.0f64;
+
+    println!("engine: {name}");
+
+    for (mate, puzzles) in puzzles_by_mate.iter() {
+        let start = Instant::now();
+        let stats = run_engine_on_puzzles(name, engine, puzzles, depth);
+        let elapsed = start.elapsed().as_secs_f64();
+        total_solved += stats.solved;
+        total_puzzles += stats.total;
+        total_elapsed += elapsed;
+        println!(
+            "mate {}: solved {}/{} ({:.2}%) in {:.2}s",
+            mate,
+            stats.solved,
+            stats.total,
+            stats.solve_rate(),
+            elapsed
+        );
+    }
+
+    let total_stats = BenchStats {
+        solved: total_solved,
+        total: total_puzzles,
+    };
+    println!(
+        "total: solved {}/{} ({:.2}%) in {:.2}s",
+        total_stats.solved,
+        total_stats.total,
+        total_stats.solve_rate(),
+        total_elapsed
+    );
 }
 
 fn run_engine_on_puzzles<E, S>(
@@ -142,14 +180,10 @@ where
         }
     }
 
-    BenchStats {
-        name,
-        solved,
-        total,
-    }
+    BenchStats { solved, total }
 }
 
-fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
+fn parse_puzzles_from_file(path: &str, mate: u8) -> Result<Vec<Puzzle>, String> {
     let contents =
         fs::read_to_string(path).map_err(|err| format!("failed to read {}: {err}", path))?;
     let mut lines = contents.lines();
@@ -162,7 +196,7 @@ fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
         if line.trim().is_empty() {
             continue;
         }
-        let puzzle = parse_puzzle_row(line).map_err(|err| {
+        let puzzle = parse_puzzle_row(line, mate).map_err(|err| {
             let display_line = line_number + 2;
             format!("line {display_line}: {err}")
         })?;
@@ -172,7 +206,7 @@ fn parse_puzzles_from_file(path: &str) -> Result<Vec<Puzzle>, String> {
     Ok(puzzles)
 }
 
-fn parse_puzzle_row(line: &str) -> Result<Puzzle, String> {
+fn parse_puzzle_row(line: &str, mate: u8) -> Result<Puzzle, String> {
     let normalized = line.trim_end_matches('\r');
     let fields = parse_first_three_fields(normalized)?;
 
@@ -189,7 +223,12 @@ fn parse_puzzle_row(line: &str) -> Result<Puzzle, String> {
         return Err("Moves value is empty".to_string());
     }
 
-    Ok(Puzzle { id, fen, moves })
+    Ok(Puzzle {
+        id,
+        fen,
+        moves,
+        mate,
+    })
 }
 
 fn parse_first_three_fields(line: &str) -> Result<Vec<String>, String> {
@@ -209,7 +248,7 @@ mod tests {
     fn parses_sample_puzzle_row() {
         let line = "000rZ,2kr1b1r/p1p2pp1/2pqb3/7p/3N2n1/2NPB3/PPP2PPP/R2Q1RK1 w - - 2 13,d4e6 d6h2,822,85,100,420,kingsideAttack mate mateIn1 oneMove opening,https://lichess.org/seIMDWkD#25,Scandinavian_Defense Scandinavian_Defense_Modern_Variation";
 
-        let puzzle = parse_puzzle_row(line).expect("row parse");
+        let puzzle = parse_puzzle_row(line, 1).expect("row parse");
 
         assert_eq!(puzzle.id, "000rZ");
         assert_eq!(
@@ -217,5 +256,6 @@ mod tests {
             "2kr1b1r/p1p2pp1/2pqb3/7p/3N2n1/2NPB3/PPP2PPP/R2Q1RK1 w - - 2 13"
         );
         assert_eq!(puzzle.moves, vec!["d4e6".to_string(), "d6h2".to_string()]);
+        assert_eq!(puzzle.mate, 1);
     }
 }
