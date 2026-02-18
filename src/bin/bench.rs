@@ -11,18 +11,13 @@ struct Puzzle {
 }
 
 fn main() {
-    let (depth, puzzle_paths) = parse_args();
-    let puzzle_paths = if puzzle_paths.is_empty() {
-        vec![
-            "bench/puzzles/mateIn1.csv".to_string(),
-            "bench/puzzles/mateIn2.csv".to_string(),
-            "bench/puzzles/mateIn3.csv".to_string(),
-            "bench/puzzles/mateIn4.csv".to_string(),
-            "bench/puzzles/mateIn5.csv".to_string(),
-        ]
+    let (depth, mate_counts) = parse_args();
+    let mate_counts = if mate_counts.is_empty() {
+        vec![1u8, 2, 3, 4, 5]
     } else {
-        puzzle_paths
+        mate_counts
     };
+    let puzzle_paths: Vec<String> = mate_counts.iter().map(|mate| mate_to_path(*mate)).collect();
 
     let mut puzzles = Vec::new();
     for path in puzzle_paths {
@@ -55,9 +50,9 @@ fn main() {
     );
 }
 
-fn parse_args() -> (u32, Vec<String>) {
+fn parse_args() -> (u32, Vec<u8>) {
     let mut depth = 6u32;
-    let mut puzzle_paths = Vec::new();
+    let mut mate_counts = Vec::new();
     let mut args = std::env::args().skip(1);
 
     while let Some(arg) = args.next() {
@@ -69,11 +64,22 @@ fn parse_args() -> (u32, Vec<String>) {
                 },
                 None => eprintln!("missing value for --depth"),
             },
-            _ => puzzle_paths.push(arg),
+            "--mate" => match args.next() {
+                Some(value) => match value.parse::<u8>() {
+                    Ok(parsed) => mate_counts.push(parsed),
+                    Err(_) => eprintln!("invalid --mate: {value}"),
+                },
+                None => eprintln!("missing value for --mate"),
+            },
+            _ => eprintln!("unknown argument: {arg}"),
         }
     }
 
-    (depth, puzzle_paths)
+    (depth, mate_counts)
+}
+
+fn mate_to_path(mate: u8) -> String {
+    format!("bench/puzzles/mateIn{mate}.csv")
 }
 
 struct BenchStats {
