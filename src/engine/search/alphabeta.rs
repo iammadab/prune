@@ -102,6 +102,19 @@ fn alphabeta(
     nodes: &mut u64,
 ) -> i32 {
     *nodes += 1;
+    if depth == 0 {
+        if !is_king_in_check(board, board.side_to_move) {
+            return evaluator.evaluate(board);
+        }
+
+        let moves = generate_legal(board);
+        if moves.is_empty() {
+            // Subtract depth so faster mates score higher and slower losses are preferred.
+            return -MATE_SCORE - depth as i32;
+        }
+        return evaluator.evaluate(board);
+    }
+
     let moves = generate_legal(board);
     if moves.is_empty() {
         if is_king_in_check(board, board.side_to_move) {
@@ -109,10 +122,6 @@ fn alphabeta(
             return -MATE_SCORE - depth as i32;
         }
         return 0;
-    }
-
-    if depth == 0 {
-        return evaluator.evaluate(board);
     }
 
     let mut best = i32::MIN;
