@@ -58,6 +58,41 @@ fn seeded_search_depth_is_deterministic() {
     assert_eq!(move_a, move_b);
 }
 
+#[test]
+fn iterative_deepening_best_move_matches_depth_result() {
+    let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
+    engine.set_rng_seed(7);
+    engine.set_position_startpos();
+
+    let (best_move, _, _) = engine.search_iterative_with_stats(2);
+
+    let direct = engine.search_depth_result(2, None);
+    let direct_best: Vec<String> = direct
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+
+    assert!(direct_best.iter().any(|mv| mv == &best_move));
+}
+
+#[test]
+fn iterative_deepening_nodes_accounting() {
+    let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
+    engine.set_position_startpos();
+
+    let (total_nodes, per_depth) = engine.search_iterative_results(3);
+
+    let mut max_nodes = 0u64;
+    for result in &per_depth {
+        if result.nodes > max_nodes {
+            max_nodes = result.nodes;
+        }
+    }
+
+    assert!(total_nodes >= max_nodes);
+}
+
 #[cfg(feature = "qsearch")]
 #[test]
 fn minimax_avoids_losing_queen_in_quiescence() {

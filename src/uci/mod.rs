@@ -2,6 +2,7 @@ use crate::engine::eval::Evaluator;
 use crate::engine::search::SearchAlgorithm;
 use crate::engine::Engine;
 use std::io::{self, Write};
+use std::time::Instant;
 
 mod commands;
 
@@ -51,7 +52,54 @@ pub fn run_loop<E: Evaluator, S: SearchAlgorithm>(engine: &mut Engine<E, S>, def
                 let status = engine.game_status();
                 match status {
                     crate::engine::types::GameStatus::Ongoing => {
-                        let bestmove = engine.search_depth(depth);
+                        let mut preferred_root = None;
+                        let mut last_result = None;
+
+                        if depth == 0 {
+                            let started = Instant::now();
+                            let result = engine.search_depth_result(0, preferred_root.as_deref());
+                            let elapsed = started.elapsed();
+                            let elapsed_ms = elapsed.as_millis();
+                            let nps = if elapsed.as_secs_f64() <= 0.0 {
+                                0.0
+                            } else {
+                                (result.nodes as f64) / elapsed.as_secs_f64()
+                            };
+                            write_line(&format!(
+                                "info depth 0 score cp {} nodes {} nps {} time {}",
+                                result.score, result.nodes, nps as u64, elapsed_ms
+                            ));
+                            last_result = Some(result);
+                        } else {
+                            for current_depth in 1..=depth {
+                                let started = Instant::now();
+                                let result = engine
+                                    .search_depth_result(current_depth, preferred_root.as_deref());
+                                let elapsed = started.elapsed();
+                                let elapsed_ms = elapsed.as_millis();
+                                let nps = if elapsed.as_secs_f64() <= 0.0 {
+                                    0.0
+                                } else {
+                                    (result.nodes as f64) / elapsed.as_secs_f64()
+                                };
+                                write_line(&format!(
+                                    "info depth {} score cp {} nodes {} nps {} time {}",
+                                    current_depth,
+                                    result.score,
+                                    result.nodes,
+                                    nps as u64,
+                                    elapsed_ms
+                                ));
+                                preferred_root = Some(result.best_moves.clone());
+                                last_result = Some(result);
+                            }
+                        }
+
+                        let bestmove = if let Some(result) = last_result {
+                            engine.pick_best_move(&result.best_moves)
+                        } else {
+                            "0000".to_string()
+                        };
                         write_line(&format!("bestmove {bestmove}"));
                     }
                     crate::engine::types::GameStatus::Checkmate

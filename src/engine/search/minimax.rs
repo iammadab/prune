@@ -52,6 +52,71 @@ impl SearchAlgorithm for MinimaxSearch {
             nodes,
         }
     }
+
+    fn search_with_root_ordering(
+        &mut self,
+        board: &mut Board,
+        evaluator: &impl Evaluator,
+        depth: u32,
+        preferred_root: Option<&[crate::engine::types::Move]>,
+    ) -> SearchResult {
+        let mut nodes = 0;
+        let mut best_moves = Vec::new();
+        let mut best_score = i32::MIN;
+
+        let mut moves = generate_legal(board);
+        if let Some(preferred) = preferred_root {
+            moves = reorder_root_moves(&moves, preferred);
+        }
+
+        if moves.is_empty() {
+            return SearchResult {
+                best_moves: Vec::new(),
+                score: evaluator.evaluate(board),
+                nodes,
+            };
+        }
+
+        for mv in moves {
+            let undo = match board.make_move(mv) {
+                Ok(undo) => undo,
+                Err(_) => continue,
+            };
+            let score = -negamax(board, evaluator, depth.saturating_sub(1), &mut nodes);
+            board.unmake_move(mv, undo);
+            if score > best_score {
+                best_score = score;
+                best_moves.clear();
+                best_moves.push(mv);
+            } else if score == best_score {
+                best_moves.push(mv);
+            }
+        }
+
+        SearchResult {
+            best_moves,
+            score: best_score,
+            nodes,
+        }
+    }
+}
+
+fn reorder_root_moves(
+    moves: &[crate::engine::types::Move],
+    preferred: &[crate::engine::types::Move],
+) -> Vec<crate::engine::types::Move> {
+    let mut ordered = Vec::with_capacity(moves.len());
+    for mv in preferred {
+        if moves.iter().any(|candidate| candidate == mv) {
+            ordered.push(*mv);
+        }
+    }
+    for mv in moves {
+        if !preferred.iter().any(|candidate| candidate == mv) {
+            ordered.push(*mv);
+        }
+    }
+    ordered
 }
 
 // Negamax explainer:
