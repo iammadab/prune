@@ -58,41 +58,25 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
     pub fn search_depth_with_stats(&mut self, _depth: u32) -> (String, u64) {
         let (last_result, total_nodes) = self.search_iterative_depth(_depth);
         let SearchResult { best_moves, .. } = last_result;
-        let mv = if best_moves.is_empty() {
-            None
-        } else if let Some(rng) = &mut self.rng {
-            let index = rng.gen_range(0..best_moves.len());
-            Some(best_moves[index])
-        } else {
-            let mut rng = rand::thread_rng();
-            let index = rng.gen_range(0..best_moves.len());
-            Some(best_moves[index])
-        };
-        (
-            mv.and_then(crate::engine::types::uci_from_move)
-                .unwrap_or_else(|| "0000".to_string()),
-            total_nodes,
-        )
+        (self.pick_best_move(&best_moves), total_nodes)
     }
 
     pub fn search_iterative_with_stats(&mut self, depth: u32) -> (String, u64, Vec<SearchResult>) {
         let (last_result, total_nodes, per_depth) = self.search_iterative_depth_with_results(depth);
         let SearchResult { best_moves, .. } = last_result;
-        let mv = if best_moves.is_empty() {
-            None
-        } else if let Some(rng) = &mut self.rng {
-            let index = rng.gen_range(0..best_moves.len());
-            Some(best_moves[index])
-        } else {
-            let mut rng = rand::thread_rng();
-            let index = rng.gen_range(0..best_moves.len());
-            Some(best_moves[index])
-        };
-        (
-            mv.and_then(crate::engine::types::uci_from_move)
-                .unwrap_or_else(|| "0000".to_string()),
-            total_nodes,
-            per_depth,
+        (self.pick_best_move(&best_moves), total_nodes, per_depth)
+    }
+
+    pub fn search_depth_result(
+        &mut self,
+        depth: u32,
+        preferred_root: Option<&[crate::engine::types::Move]>,
+    ) -> SearchResult {
+        self.search.search_with_root_ordering(
+            &mut self.board,
+            &self.evaluator,
+            depth,
+            preferred_root,
         )
     }
 
@@ -148,6 +132,21 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
             total_nodes,
             per_depth,
         )
+    }
+
+    pub(crate) fn pick_best_move(&mut self, best_moves: &[crate::engine::types::Move]) -> String {
+        let mv = if best_moves.is_empty() {
+            None
+        } else if let Some(rng) = &mut self.rng {
+            let index = rng.gen_range(0..best_moves.len());
+            Some(best_moves[index])
+        } else {
+            let mut rng = rand::thread_rng();
+            let index = rng.gen_range(0..best_moves.len());
+            Some(best_moves[index])
+        };
+        mv.and_then(crate::engine::types::uci_from_move)
+            .unwrap_or_else(|| "0000".to_string())
     }
 
     pub fn game_status(&mut self) -> GameStatus {
