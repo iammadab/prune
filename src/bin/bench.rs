@@ -20,6 +20,7 @@ fn main() {
     } else {
         mate_counts
     };
+    println!("bench depth: {depth}");
     let mut puzzles_by_mate: BTreeMap<u8, Vec<Puzzle>> = BTreeMap::new();
     for mate in mate_counts {
         let path = mate_to_path(mate);
