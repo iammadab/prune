@@ -2,6 +2,7 @@ use crate::engine::board::Board;
 use crate::engine::eval::Evaluator;
 use crate::engine::types::Move;
 
+#[derive(Clone)]
 pub struct SearchResult {
     pub best_moves: Vec<Move>,
     pub score: i32,
