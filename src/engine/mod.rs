@@ -67,6 +67,11 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
         (self.pick_best_move(&best_moves), total_nodes, per_depth)
     }
 
+    pub fn search_iterative_results(&mut self, depth: u32) -> (u64, Vec<SearchResult>) {
+        let (_, total_nodes, per_depth) = self.search_iterative_depth_with_results(depth);
+        (total_nodes, per_depth)
+    }
+
     pub fn search_depth_result(
         &mut self,
         depth: u32,
