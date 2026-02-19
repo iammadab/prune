@@ -6,6 +6,7 @@ pub mod fen;
 pub mod movegen;
 pub mod search;
 pub mod types;
+pub mod zobrist;
 
 use board::Board;
 use eval::Evaluator;

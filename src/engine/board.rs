@@ -1,6 +1,7 @@
 use crate::engine::apply_move;
 use crate::engine::fen::{parse_fen, validate_fen_semantics, STARTPOS_FEN};
 use crate::engine::types::{move_from_uci, Color, Move, Piece, Square};
+use crate::engine::zobrist;
 
 pub struct Board {
     pub squares: [Option<Piece>; 128],
@@ -9,18 +10,22 @@ pub struct Board {
     pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
+    pub hash: u64,
 }
 
 impl Board {
     pub fn new() -> Self {
-        Self {
+        let mut board = Self {
             squares: [None; 128],
             side_to_move: Color::White,
             castling_rights: 0,
             en_passant: None,
             halfmove_clock: 0,
             fullmove_number: 1,
-        }
+            hash: 0,
+        };
+        board.hash = zobrist::compute_hash(&board);
+        board
     }
 
     pub fn clear(&mut self) {
@@ -30,6 +35,7 @@ impl Board {
         self.en_passant = None;
         self.halfmove_clock = 0;
         self.fullmove_number = 1;
+        self.hash = zobrist::compute_hash(self);
     }
 
     pub fn set_startpos(&mut self) {
@@ -46,7 +52,16 @@ impl Board {
         self.en_passant = data.en_passant;
         self.halfmove_clock = data.halfmove_clock;
         self.fullmove_number = data.fullmove_number;
+        self.hash = zobrist::compute_hash(self);
         Ok(())
+    }
+
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
+
+    pub fn compute_hash(&self) -> u64 {
+        zobrist::compute_hash(self)
     }
 
     pub fn apply_uci_move_list(&mut self, moves: &[String]) -> Result<(), String> {
@@ -202,6 +217,32 @@ mod tests {
         let pawn = board.squares[e3].expect("pawn on e3");
         assert_eq!(pawn.kind, PieceKind::Pawn);
         assert_eq!(pawn.color, Color::Black);
+    }
+
+    #[test]
+    fn hash_matches_after_en_passant_sequence() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        let moves = ["e2e4", "a7a6", "e4e5", "d7d5", "e5d6"];
+        for mv in moves {
+            let parsed = move_from_uci(mv).expect("move");
+            board.apply_move(parsed).expect("apply move");
+            assert_eq!(board.hash(), board.compute_hash());
+        }
+    }
+
+    #[test]
+    fn hash_matches_after_castling_sequence() {
+        let mut board = Board::new();
+        board.set_fen(STARTPOS_FEN).expect("startpos");
+
+        let moves = ["e2e4", "e7e5", "g1f3", "b8c6", "f1e2", "g8f6", "e1g1"];
+        for mv in moves {
+            let parsed = move_from_uci(mv).expect("move");
+            board.apply_move(parsed).expect("apply move");
+            assert_eq!(board.hash(), board.compute_hash());
+        }
     }
 
     #[test]

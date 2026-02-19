@@ -1,6 +1,7 @@
 use crate::engine::board::Board;
 use crate::engine::castling::{revoke_all, revoke_kingside, revoke_queenside};
 use crate::engine::types::{Color, Move, Piece, PieceKind, Square};
+use crate::engine::zobrist;
 
 #[derive(Debug, Clone, Copy)]
 pub struct MoveUndo {
@@ -13,6 +14,7 @@ pub struct MoveUndo {
     pub previous_side_to_move: Color,
     pub rook_move: Option<(Square, Square)>,
     pub moved_piece: Piece,
+    pub previous_hash: u64,
 }
 
 pub fn apply_move(board: &mut Board, mv: Move) -> Result<(), String> {
@@ -40,6 +42,7 @@ pub fn make_move(board: &mut Board, mv: Move) -> Result<MoveUndo, String> {
         previous_side_to_move: board.side_to_move,
         rook_move: None,
         moved_piece: ctx.piece,
+        previous_hash: board.hash,
     };
 
     let was_capture = apply_piece_move(board, &ctx, moved_piece, &mut undo)?;
@@ -51,6 +54,18 @@ pub fn make_move(board: &mut Board, mv: Move) -> Result<MoveUndo, String> {
     update_castling_rights(&mut board.castling_rights, &ctx, was_capture);
     update_clocks(board, &ctx, was_capture);
 
+    board.hash = zobrist::update_hash_for_move(
+        board,
+        mv,
+        ctx.piece,
+        moved_piece,
+        undo.captured,
+        undo.captured_square,
+        undo.rook_move,
+        undo.previous_castling_rights,
+        undo.previous_en_passant,
+    );
+
     Ok(undo)
 }
 
@@ -60,6 +75,7 @@ pub fn unmake_move(board: &mut Board, mv: Move, undo: MoveUndo) {
     board.fullmove_number = undo.previous_fullmove_number;
     board.castling_rights = undo.previous_castling_rights;
     board.en_passant = undo.previous_en_passant;
+    board.hash = undo.previous_hash;
 
     if let Some((rook_from, rook_to)) = undo.rook_move {
         let rook = board.squares[rook_to.index() as usize];

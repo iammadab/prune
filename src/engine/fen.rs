@@ -125,6 +125,7 @@ pub fn validate_fen_semantics(data: &FenData) -> Result<(), String> {
         en_passant: data.en_passant,
         halfmove_clock: data.halfmove_clock,
         fullmove_number: data.fullmove_number,
+        hash: 0,
     };
     let white_in_check = is_square_attacked(&board, white_king, Color::Black);
     let black_in_check = is_square_attacked(&board, black_king, Color::White);
