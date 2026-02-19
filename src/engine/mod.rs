@@ -75,10 +75,40 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
         )
     }
 
+    pub fn search_iterative_with_stats(&mut self, depth: u32) -> (String, u64, Vec<SearchResult>) {
+        let (last_result, total_nodes, per_depth) = self.search_iterative_depth_with_results(depth);
+        let SearchResult { best_moves, .. } = last_result;
+        let mv = if best_moves.is_empty() {
+            None
+        } else if let Some(rng) = &mut self.rng {
+            let index = rng.gen_range(0..best_moves.len());
+            Some(best_moves[index])
+        } else {
+            let mut rng = rand::thread_rng();
+            let index = rng.gen_range(0..best_moves.len());
+            Some(best_moves[index])
+        };
+        (
+            mv.and_then(crate::engine::types::uci_from_move)
+                .unwrap_or_else(|| "0000".to_string()),
+            total_nodes,
+            per_depth,
+        )
+    }
+
     fn search_iterative_depth(&mut self, depth: u32) -> (SearchResult, u64) {
+        let (last_result, total_nodes, _) = self.search_iterative_depth_with_results(depth);
+        (last_result, total_nodes)
+    }
+
+    fn search_iterative_depth_with_results(
+        &mut self,
+        depth: u32,
+    ) -> (SearchResult, u64, Vec<SearchResult>) {
         let mut total_nodes = 0u64;
         let mut last_result = None;
         let mut preferred_root: Option<Vec<crate::engine::types::Move>> = None;
+        let mut per_depth = Vec::new();
 
         if depth == 0 {
             let result = self.search.search_with_root_ordering(
@@ -89,6 +119,9 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
             );
             total_nodes = total_nodes.saturating_add(result.nodes);
             last_result = Some(result);
+            if let Some(snapshot) = last_result.clone() {
+                per_depth.push(snapshot);
+            }
         } else {
             for current_depth in 1..=depth {
                 let result = self.search.search_with_root_ordering(
@@ -100,6 +133,9 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
                 total_nodes = total_nodes.saturating_add(result.nodes);
                 preferred_root = Some(result.best_moves.clone());
                 last_result = Some(result);
+                if let Some(snapshot) = last_result.clone() {
+                    per_depth.push(snapshot);
+                }
             }
         }
 
@@ -110,6 +146,7 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
                 nodes: 0,
             }),
             total_nodes,
+            per_depth,
         )
     }
 
