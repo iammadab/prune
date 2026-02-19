@@ -56,9 +56,8 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
     }
 
     pub fn search_depth_with_stats(&mut self, _depth: u32) -> (String, u64) {
-        let SearchResult {
-            best_moves, nodes, ..
-        } = self.search.search(&mut self.board, &self.evaluator, _depth);
+        let (last_result, total_nodes) = self.search_iterative_depth(_depth);
+        let SearchResult { best_moves, .. } = last_result;
         let mv = if best_moves.is_empty() {
             None
         } else if let Some(rng) = &mut self.rng {
@@ -72,7 +71,35 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
         (
             mv.and_then(crate::engine::types::uci_from_move)
                 .unwrap_or_else(|| "0000".to_string()),
-            nodes,
+            total_nodes,
+        )
+    }
+
+    fn search_iterative_depth(&mut self, depth: u32) -> (SearchResult, u64) {
+        let mut total_nodes = 0u64;
+        let mut last_result = None;
+
+        if depth == 0 {
+            let result = self.search.search(&mut self.board, &self.evaluator, 0);
+            total_nodes = total_nodes.saturating_add(result.nodes);
+            last_result = Some(result);
+        } else {
+            for current_depth in 1..=depth {
+                let result = self
+                    .search
+                    .search(&mut self.board, &self.evaluator, current_depth);
+                total_nodes = total_nodes.saturating_add(result.nodes);
+                last_result = Some(result);
+            }
+        }
+
+        (
+            last_result.unwrap_or(SearchResult {
+                best_moves: Vec::new(),
+                score: 0,
+                nodes: 0,
+            }),
+            total_nodes,
         )
     }
 
