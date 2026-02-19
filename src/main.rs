@@ -7,7 +7,7 @@ use std::env;
 fn main() {
     let (default_depth, seed) = parse_args();
     // let mut engine = Engine::with_components(MaterialEvaluator, MinimaxSearch);
-    let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
+    let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch::new());
     if let Some(seed) = seed {
         engine.set_rng_seed(seed);
     }

@@ -18,7 +18,7 @@ fn alphabeta_matches_minimax_depth1() {
     board.set_fen(tactical_capture_fen()).expect("fen");
 
     let mut minimax = MinimaxSearch;
-    let mut alphabeta = AlphaBetaSearch;
+    let mut alphabeta = AlphaBetaSearch::new();
 
     let mut mini_best: Vec<String> = minimax
         .search(&mut board, &MaterialEvaluator, 1)
@@ -60,7 +60,7 @@ fn seeded_search_depth_is_deterministic() {
 
 #[test]
 fn iterative_deepening_best_move_matches_depth_result() {
-    let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
+    let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch::new());
     engine.set_rng_seed(7);
     engine.set_position_startpos();
 
@@ -78,7 +78,7 @@ fn iterative_deepening_best_move_matches_depth_result() {
 
 #[test]
 fn iterative_deepening_nodes_accounting() {
-    let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
+    let mut engine = Engine::with_components(MaterialEvaluator, AlphaBetaSearch::new());
     engine.set_position_startpos();
 
     let (total_nodes, per_depth) = engine.search_iterative_results(3);
@@ -91,6 +91,32 @@ fn iterative_deepening_nodes_accounting() {
     }
 
     assert!(total_nodes >= max_nodes);
+}
+
+#[test]
+fn alphabeta_tt_keeps_best_moves_stable() {
+    let mut board = Board::new();
+    board.set_startpos();
+
+    let mut search = AlphaBetaSearch::new();
+    let first = search.search(&mut board, &MaterialEvaluator, 2);
+    let mut first_best: Vec<String> = first
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+    first_best.sort();
+
+    board.set_startpos();
+    let second = search.search(&mut board, &MaterialEvaluator, 2);
+    let mut second_best: Vec<String> = second
+        .best_moves
+        .iter()
+        .filter_map(|mv| uci_from_move(*mv))
+        .collect();
+    second_best.sort();
+
+    assert_eq!(first_best, second_best);
 }
 
 #[cfg(feature = "qsearch")]
@@ -116,7 +142,7 @@ fn alphabeta_avoids_losing_queen_in_quiescence() {
     let mut board = Board::new();
     board.set_fen(quiescence_recapture_fen()).expect("fen");
 
-    let mut search = AlphaBetaSearch;
+    let mut search = AlphaBetaSearch::new();
     let result = search.search(&mut board, &MaterialEvaluator, 1);
     let best_moves: Vec<String> = result
         .best_moves
@@ -134,7 +160,7 @@ fn alphabeta_depth3_includes_ba6() {
         .set_fen("rnbqkbnr/pppp1ppp/8/4p3/8/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
         .expect("fen");
 
-    let mut search = AlphaBetaSearch;
+    let mut search = AlphaBetaSearch::new();
     let result = search.search(&mut board, &MaterialEvaluator, 3);
     let best_moves: Vec<String> = result
         .best_moves
@@ -151,7 +177,7 @@ fn alphabeta_best_moves_subset_of_minimax_depth2_startpos() {
     board.set_startpos();
 
     let mut minimax = MinimaxSearch;
-    let mut alphabeta = AlphaBetaSearch;
+    let mut alphabeta = AlphaBetaSearch::new();
 
     let mini_best: Vec<String> = minimax
         .search(&mut board, &MaterialEvaluator, 2)
