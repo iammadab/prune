@@ -11,4 +11,15 @@ pub struct SearchResult {
 pub trait SearchAlgorithm {
     fn search(&mut self, board: &mut Board, evaluator: &impl Evaluator, depth: u32)
         -> SearchResult;
+
+    fn search_with_root_ordering(
+        &mut self,
+        board: &mut Board,
+        evaluator: &impl Evaluator,
+        depth: u32,
+        preferred_root: Option<&[Move]>,
+    ) -> SearchResult {
+        let _ = preferred_root;
+        self.search(board, evaluator, depth)
+    }
 }

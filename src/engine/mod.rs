@@ -78,17 +78,27 @@ impl<E: Evaluator, S: SearchAlgorithm> Engine<E, S> {
     fn search_iterative_depth(&mut self, depth: u32) -> (SearchResult, u64) {
         let mut total_nodes = 0u64;
         let mut last_result = None;
+        let mut preferred_root: Option<Vec<crate::engine::types::Move>> = None;
 
         if depth == 0 {
-            let result = self.search.search(&mut self.board, &self.evaluator, 0);
+            let result = self.search.search_with_root_ordering(
+                &mut self.board,
+                &self.evaluator,
+                0,
+                preferred_root.as_deref(),
+            );
             total_nodes = total_nodes.saturating_add(result.nodes);
             last_result = Some(result);
         } else {
             for current_depth in 1..=depth {
-                let result = self
-                    .search
-                    .search(&mut self.board, &self.evaluator, current_depth);
+                let result = self.search.search_with_root_ordering(
+                    &mut self.board,
+                    &self.evaluator,
+                    current_depth,
+                    preferred_root.as_deref(),
+                );
                 total_nodes = total_nodes.saturating_add(result.nodes);
+                preferred_root = Some(result.best_moves.clone());
                 last_result = Some(result);
             }
         }
