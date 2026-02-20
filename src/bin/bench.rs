@@ -32,7 +32,7 @@ fn main() {
             .append(&mut file_puzzles);
     }
 
-    let mut alphabeta = Engine::with_components(MaterialEvaluator, AlphaBetaSearch);
+    let mut alphabeta = Engine::with_components(MaterialEvaluator, AlphaBetaSearch::new());
     print_engine_stats("alphabeta", &mut alphabeta, &puzzles_by_mate, depth);
 
     let mut minimax = Engine::with_components(MaterialEvaluator, MinimaxSearch);
